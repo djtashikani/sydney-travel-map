@@ -261,10 +261,32 @@
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s;
+            user-select: none;
         }
 
         .spot-item:hover {
             background: #e8f4f8;
+        }
+
+        .spot-item.dragging {
+            opacity: 0.5;
+            background: #e3f2fd;
+        }
+
+        .spot-item.drag-over {
+            border-top: 3px solid #0077b6;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: #999;
+            font-size: 1.2rem;
+            padding: 5px;
+            margin-right: 5px;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
         }
 
         .spot-item.selected {
@@ -971,11 +993,13 @@
         let selectedSpots = new Set();
         let customSpots = [];
         let hiddenSpots = new Set(); // 削除（非表示）にした観光地ID
+        let spotOrder = []; // 観光地の表示順序
         let currentCategory = 'all';
         let routeMode = 'transit';
         let routeLine = null;
         let tempCustomLocation = null;
         let selectedSearchResult = null; // 検索で選択した場所
+        let draggedItem = null; // ドラッグ中のアイテム
 
         // 初期化
         document.addEventListener('DOMContentLoaded', function() {
@@ -1045,6 +1069,7 @@
             selectedSpots.clear();
             customSpots = [];
             hiddenSpots.clear();
+            spotOrder = [];
             startLocation = null;
             endLocation = null;
             if (routeLine) {
@@ -1129,16 +1154,51 @@
             return cityConfig[currentCity].spots.filter(s => !hiddenSpots.has(s.id));
         }
 
-        function renderSpotList() {
-            const container = document.getElementById('spotList');
+        // 並べ替えを適用した全スポットリストを取得
+        function getOrderedSpots() {
             const defaultSpots = getCurrentSpots();
             const allSpots = [...defaultSpots, ...customSpots];
+
+            // spotOrderが空の場合は初期化
+            if (spotOrder.length === 0) {
+                spotOrder = allSpots.map(s => s.id);
+            }
+
+            // 新しいスポットがあれば末尾に追加
+            allSpots.forEach(spot => {
+                if (!spotOrder.includes(spot.id)) {
+                    spotOrder.push(spot.id);
+                }
+            });
+
+            // 削除されたスポットをorderから除外
+            const existingIds = new Set(allSpots.map(s => s.id));
+            spotOrder = spotOrder.filter(id => existingIds.has(id));
+
+            // 順序に従ってソート
+            return allSpots.sort((a, b) => {
+                return spotOrder.indexOf(a.id) - spotOrder.indexOf(b.id);
+            });
+        }
+
+        function renderSpotList() {
+            const container = document.getElementById('spotList');
+            const orderedSpots = getOrderedSpots();
             const filteredSpots = currentCategory === 'all'
-                ? allSpots
-                : allSpots.filter(s => s.category === currentCategory || (currentCategory === 'custom' && s.category === 'custom'));
+                ? orderedSpots
+                : orderedSpots.filter(s => s.category === currentCategory || (currentCategory === 'custom' && s.category === 'custom'));
 
             container.innerHTML = filteredSpots.map(spot => `
-                <div class="spot-item ${selectedSpots.has(spot.id) ? 'selected' : ''}" onclick="toggleSpot(${spot.id})">
+                <div class="spot-item ${selectedSpots.has(spot.id) ? 'selected' : ''}"
+                     draggable="true"
+                     data-spot-id="${spot.id}"
+                     ondragstart="handleDragStart(event, ${spot.id})"
+                     ondragend="handleDragEnd(event)"
+                     ondragover="handleDragOver(event)"
+                     ondragleave="handleDragLeave(event)"
+                     ondrop="handleDrop(event, ${spot.id})"
+                     onclick="toggleSpot(${spot.id})">
+                    <span class="drag-handle" onclick="event.stopPropagation()">⋮⋮</span>
                     <input type="checkbox" class="spot-checkbox" ${selectedSpots.has(spot.id) ? 'checked' : ''}>
                     <span class="spot-icon">${spot.icon}</span>
                     <div class="spot-info">
@@ -1152,6 +1212,67 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        // ドラッグ＆ドロップ関連の関数
+        function handleDragStart(event, spotId) {
+            draggedItem = spotId;
+            event.target.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', spotId);
+        }
+
+        function handleDragEnd(event) {
+            event.target.classList.remove('dragging');
+            document.querySelectorAll('.spot-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+            draggedItem = null;
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            const targetItem = event.target.closest('.spot-item');
+            if (targetItem && !targetItem.classList.contains('dragging')) {
+                // 他のdrag-overを削除
+                document.querySelectorAll('.spot-item').forEach(item => {
+                    item.classList.remove('drag-over');
+                });
+                targetItem.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(event) {
+            const targetItem = event.target.closest('.spot-item');
+            if (targetItem) {
+                targetItem.classList.remove('drag-over');
+            }
+        }
+
+        function handleDrop(event, targetSpotId) {
+            event.preventDefault();
+            const targetItem = event.target.closest('.spot-item');
+            if (targetItem) {
+                targetItem.classList.remove('drag-over');
+            }
+
+            if (draggedItem === null || draggedItem === targetSpotId) return;
+
+            // 順序を更新
+            const fromIndex = spotOrder.indexOf(draggedItem);
+            const toIndex = spotOrder.indexOf(targetSpotId);
+
+            if (fromIndex !== -1 && toIndex !== -1) {
+                // 元の位置から削除
+                spotOrder.splice(fromIndex, 1);
+                // 新しい位置に挿入
+                spotOrder.splice(toIndex, 0, draggedItem);
+
+                // リストを再描画
+                renderSpotList();
+                saveToLocalStorage();
+            }
         }
 
         function toggleSpot(id) {
@@ -1231,9 +1352,8 @@
         }
 
         function setAsStart(id) {
-            const defaultSpots = getCurrentSpots();
-            const allSpots = [...defaultSpots, ...customSpots];
-            const spot = allSpots.find(s => s.id === id);
+            const orderedSpots = getOrderedSpots();
+            const spot = orderedSpots.find(s => s.id === id);
             if (spot) {
                 startLocation = { name: spot.name, lat: spot.lat, lng: spot.lng };
                 updateLocationDisplay();
@@ -1243,9 +1363,8 @@
         }
 
         function setAsEnd(id) {
-            const defaultSpots = getCurrentSpots();
-            const allSpots = [...defaultSpots, ...customSpots];
-            const spot = allSpots.find(s => s.id === id);
+            const orderedSpots = getOrderedSpots();
+            const spot = orderedSpots.find(s => s.id === id);
             if (spot) {
                 endLocation = { name: spot.name, lat: spot.lat, lng: spot.lng };
                 updateLocationDisplay();
@@ -1302,8 +1421,7 @@
                 }
             });
 
-            const defaultSpots = getCurrentSpots();
-            const allSpots = [...defaultSpots, ...customSpots];
+            const allSpots = getOrderedSpots();
             const config = cityConfig[currentCity];
 
             selectedSpots.forEach(id => {
@@ -1631,6 +1749,7 @@
                 selectedSpots: Array.from(selectedSpots),
                 customSpots: customSpots,
                 hiddenSpots: Array.from(hiddenSpots),
+                spotOrder: spotOrder,
                 startLocation: startLocation,
                 endLocation: endLocation
             };
@@ -1646,6 +1765,7 @@
                 selectedSpots = new Set(data.selectedSpots || []);
                 customSpots = data.customSpots || [];
                 hiddenSpots = new Set(data.hiddenSpots || []);
+                spotOrder = data.spotOrder || [];
                 startLocation = data.startLocation || null;
                 endLocation = data.endLocation || null;
                 updateLocationDisplay();
@@ -1658,6 +1778,7 @@
                 selectedSpots.clear();
                 customSpots = [];
                 hiddenSpots.clear();
+                spotOrder = [];
                 startLocation = null;
                 endLocation = null;
                 if (routeLine) {
