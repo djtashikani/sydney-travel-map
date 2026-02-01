@@ -1014,7 +1014,7 @@
             <div class="sidebar-section tab-content" id="tab-custom">
                 <div class="custom-spot-form">
                     <div class="search-box">
-                        <input type="text" class="custom-spot-input" id="searchInput" placeholder="🔍 場所を検索（例: W Hotel Sydney）">
+                        <input type="text" class="custom-spot-input" id="searchInput" placeholder="🔍 場所を検索（例: オペラハウス、Bondi Beach）">
                         <button class="search-btn" onclick="searchLocation()">検索</button>
                     </div>
                     <div class="search-results" id="searchResults"></div>
@@ -1846,32 +1846,72 @@
 
             // 現在の都市に基づいて検索範囲を設定
             const config = cityConfig[currentCity];
+            const cityNames = currentCity === 'sydney'
+                ? ['Sydney', 'シドニー']
+                : ['Melbourne', 'メルボルン'];
             const viewbox = currentCity === 'sydney'
                 ? '150.5,-34.2,151.5,-33.5' // シドニー周辺
                 : '144.5,-38.2,145.5,-37.5'; // メルボルン周辺
 
             try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?` +
-                    `q=${encodeURIComponent(query + ' ' + config.name)}&` +
-                    `format=json&` +
-                    `addressdetails=1&` +
-                    `limit=5&` +
-                    `viewbox=${viewbox}&` +
-                    `bounded=0`,
-                    {
-                        headers: {
-                            'Accept-Language': 'ja,en'
+                // 複数の検索クエリを試す（日本語と英語の都市名）
+                let allResults = [];
+
+                for (const cityName of cityNames) {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/search?` +
+                        `q=${encodeURIComponent(query + ' ' + cityName + ' Australia')}&` +
+                        `format=json&` +
+                        `addressdetails=1&` +
+                        `limit=5&` +
+                        `viewbox=${viewbox}&` +
+                        `bounded=0`,
+                        {
+                            headers: {
+                                'Accept-Language': 'ja,en'
+                            }
                         }
-                    }
-                );
+                    );
+                    const results = await response.json();
+                    allResults = allResults.concat(results);
 
-                const results = await response.json();
+                    // 結果が見つかったら終了
+                    if (results.length > 0) break;
+                }
 
-                if (results.length === 0) {
+                // 都市名なしでも検索（viewboxで絞り込み）
+                if (allResults.length === 0) {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/search?` +
+                        `q=${encodeURIComponent(query)}&` +
+                        `format=json&` +
+                        `addressdetails=1&` +
+                        `limit=5&` +
+                        `viewbox=${viewbox}&` +
+                        `bounded=1`,
+                        {
+                            headers: {
+                                'Accept-Language': 'ja,en'
+                            }
+                        }
+                    );
+                    allResults = await response.json();
+                }
+
+                // 重複を除去（同じ緯度経度の結果）
+                const uniqueResults = allResults.filter((result, index, self) =>
+                    index === self.findIndex(r =>
+                        Math.abs(r.lat - result.lat) < 0.0001 &&
+                        Math.abs(r.lon - result.lon) < 0.0001
+                    )
+                ).slice(0, 5);
+
+                if (uniqueResults.length === 0) {
                     resultsContainer.innerHTML = '<div class="no-results">検索結果がありません。別のキーワードをお試しください。</div>';
                     return;
                 }
+
+                const results = uniqueResults;
 
                 resultsContainer.innerHTML = results.map((result, index) => {
                     const icon = getPlaceIcon(result.type, result.class);
