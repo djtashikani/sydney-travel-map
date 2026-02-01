@@ -813,6 +813,123 @@
             font-size: 0.9rem;
             padding: 20px;
         }
+
+        /* ユーザーID入力モーダル */
+        .user-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+
+        .user-modal.hidden {
+            display: none;
+        }
+
+        .user-modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .user-modal-content h2 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .user-modal-content p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .user-id-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .user-id-input:focus {
+            outline: none;
+            border-color: #0077b6;
+        }
+
+        .user-modal-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #0077b6 0%, #00b4d8 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .user-modal-btn:hover {
+            opacity: 0.9;
+        }
+
+        .user-modal-btn.secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .user-id-hint {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        /* 同期ステータス */
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .sync-status .user-id {
+            font-weight: bold;
+        }
+
+        .sync-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        .sync-indicator.syncing {
+            background: #fbbf24;
+            animation: pulse 1s infinite;
+        }
+
+        .sync-indicator.offline {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
@@ -829,8 +946,25 @@
     <div class="header" id="header">
         <h1 id="headerTitle">🦘 シドニー観光マップ</h1>
         <div class="header-buttons">
+            <div class="sync-status" onclick="showUserModal()" id="syncStatus">
+                <span class="sync-indicator" id="syncIndicator"></span>
+                <span class="user-id" id="displayUserId">未ログイン</span>
+            </div>
             <button class="header-btn" onclick="shareUrl()">🔗 共有</button>
             <button class="header-btn" onclick="clearAllData()">🗑️ リセット</button>
+        </div>
+    </div>
+
+    <!-- ユーザーID入力モーダル -->
+    <div class="user-modal hidden" id="userModal">
+        <div class="user-modal-content">
+            <h2>🔄 クラウド同期</h2>
+            <p>IDを入力すると、どの端末からでも<br>同じデータにアクセスできます</p>
+            <input type="text" class="user-id-input" id="userIdInput" placeholder="例: tashikani123" maxlength="20">
+            <p class="user-id-hint">3文字以上の英数字・ハイフン・アンダースコア</p>
+            <button class="user-modal-btn" onclick="loginUser()">ログイン / 新規作成</button>
+            <button class="user-modal-btn secondary" onclick="closeUserModal()">キャンセル</button>
+            <button class="user-modal-btn secondary" onclick="logoutUser()" id="logoutBtn" style="display: none;">ログアウト</button>
         </div>
     </div>
 
@@ -928,6 +1062,151 @@
     </div>
 
     <script>
+        // ===== クラウド同期関連 =====
+        let currentUserId = null;
+        let syncTimer = null;
+        let isSyncing = false;
+
+        // ユーザーIDを取得（localStorageから）
+        function getSavedUserId() {
+            return localStorage.getItem('travelMapUserId');
+        }
+
+        // ユーザーモーダルを表示
+        function showUserModal() {
+            document.getElementById('userModal').classList.remove('hidden');
+            document.getElementById('userIdInput').value = currentUserId || '';
+            document.getElementById('logoutBtn').style.display = currentUserId ? 'block' : 'none';
+        }
+
+        // ユーザーモーダルを閉じる
+        function closeUserModal() {
+            document.getElementById('userModal').classList.add('hidden');
+        }
+
+        // ログイン/新規作成
+        async function loginUser() {
+            const userId = document.getElementById('userIdInput').value.trim().toLowerCase();
+            if (!userId || userId.length < 3) {
+                alert('IDは3文字以上で入力してください');
+                return;
+            }
+
+            // 英数字とハイフン、アンダースコアのみ許可
+            if (!/^[a-z0-9_-]+$/.test(userId)) {
+                alert('IDは英数字、ハイフン、アンダースコアのみ使用できます');
+                return;
+            }
+
+            currentUserId = userId;
+            localStorage.setItem('travelMapUserId', userId);
+
+            // サーバーからデータを取得
+            await loadFromCloud();
+
+            updateSyncUI();
+            closeUserModal();
+        }
+
+        // ログアウト
+        function logoutUser() {
+            currentUserId = null;
+            localStorage.removeItem('travelMapUserId');
+            updateSyncUI();
+            closeUserModal();
+        }
+
+        // 同期UIを更新
+        function updateSyncUI() {
+            const indicator = document.getElementById('syncIndicator');
+            const displayId = document.getElementById('displayUserId');
+
+            if (currentUserId) {
+                displayId.textContent = currentUserId;
+                indicator.className = 'sync-indicator';
+            } else {
+                displayId.textContent = '未ログイン';
+                indicator.className = 'sync-indicator offline';
+            }
+        }
+
+        // クラウドからデータを読み込み
+        async function loadFromCloud() {
+            if (!currentUserId) return;
+
+            const indicator = document.getElementById('syncIndicator');
+            indicator.className = 'sync-indicator syncing';
+
+            try {
+                const response = await fetch(`/api/sync/${currentUserId}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    // シドニーのデータ
+                    if (result.data.sydney) {
+                        localStorage.setItem('australiaTravelMap_sydney', JSON.stringify(result.data.sydney));
+                    }
+                    // メルボルンのデータ
+                    if (result.data.melbourne) {
+                        localStorage.setItem('australiaTravelMap_melbourne', JSON.stringify(result.data.melbourne));
+                    }
+
+                    // 現在の都市のデータを再読み込み
+                    loadFromLocalStorage();
+                    renderSpotList();
+                    renderSavedSpots();
+                    renderHiddenSpots();
+                    updateMarkers();
+                }
+
+                indicator.className = 'sync-indicator';
+            } catch (e) {
+                console.error('Cloud load error:', e);
+                indicator.className = 'sync-indicator offline';
+            }
+        }
+
+        // クラウドにデータを保存
+        async function saveToCloud() {
+            if (!currentUserId || isSyncing) return;
+
+            isSyncing = true;
+            const indicator = document.getElementById('syncIndicator');
+            indicator.className = 'sync-indicator syncing';
+
+            try {
+                // 両都市のデータを取得
+                const sydneyData = localStorage.getItem('australiaTravelMap_sydney');
+                const melbourneData = localStorage.getItem('australiaTravelMap_melbourne');
+
+                const data = {
+                    sydney: sydneyData ? JSON.parse(sydneyData) : null,
+                    melbourne: melbourneData ? JSON.parse(melbourneData) : null
+                };
+
+                await fetch(`/api/sync/${currentUserId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                indicator.className = 'sync-indicator';
+            } catch (e) {
+                console.error('Cloud save error:', e);
+                indicator.className = 'sync-indicator offline';
+            } finally {
+                isSyncing = false;
+            }
+        }
+
+        // 保存時に自動でクラウドにも同期（debounce付き）
+        function scheduleSyncToCloud() {
+            if (syncTimer) clearTimeout(syncTimer);
+            syncTimer = setTimeout(() => {
+                saveToCloud();
+            }, 1000); // 1秒後に同期
+        }
+
         // シドニーの主要観光地データ
         const sydneySpots = [
             { id: 1, name: "オペラハウス", nameEn: "Sydney Opera House", category: "landmark", icon: "🎭", lat: -33.8568, lng: 151.2153, description: "世界遺産の象徴的建築" },
@@ -1002,7 +1281,16 @@
         let draggedItem = null; // ドラッグ中のアイテム
 
         // 初期化
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 保存されたユーザーIDを読み込み
+            const savedUserId = getSavedUserId();
+            if (savedUserId) {
+                currentUserId = savedUserId;
+                // クラウドからデータを同期
+                await loadFromCloud();
+            }
+            updateSyncUI();
+
             const loadedFromUrl = loadFromUrl();
             initMap();
             // URLからデータを読み込んだ場合はlocalStorageをスキップ
@@ -1773,6 +2061,11 @@
                 endLocation: endLocation
             };
             localStorage.setItem(getStorageKey(), JSON.stringify(data));
+
+            // ログイン中ならクラウドにも同期
+            if (currentUserId) {
+                scheduleSyncToCloud();
+            }
         }
 
         function loadFromLocalStorage() {
