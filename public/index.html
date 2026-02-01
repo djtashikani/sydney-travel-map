@@ -382,98 +382,6 @@
             height: 100%;
         }
 
-        .route-info-panel {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: white;
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            display: none;
-            z-index: 1000;
-        }
-
-        .route-info-panel.visible {
-            display: block;
-        }
-
-        .route-info-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .route-info-header h4 {
-            font-size: 1rem;
-            color: #333;
-        }
-
-        .close-route-info {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .route-details {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .route-detail-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .route-detail-item .icon {
-            font-size: 1.2rem;
-        }
-
-        .route-detail-item .value {
-            font-weight: bold;
-            color: #333;
-        }
-
-        .route-detail-item .label {
-            font-size: 0.8rem;
-            color: #666;
-        }
-
-        .route-links {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .route-link-btn {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: bold;
-            text-decoration: none;
-            text-align: center;
-            transition: all 0.3s;
-        }
-
-        .route-link-btn.google {
-            background: #4285f4;
-            color: white;
-        }
-
-        .route-link-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-
         .share-overlay {
             position: fixed;
             top: 0;
@@ -975,15 +883,6 @@
 
         <div class="map-container" id="mapContainer">
             <div id="map"></div>
-
-            <div class="route-info-panel" id="routeInfoPanel">
-                <div class="route-info-header">
-                    <h4>📍 経路情報</h4>
-                    <button class="close-route-info" onclick="closeRouteInfo()">✕</button>
-                </div>
-                <div class="route-details" id="routeDetails"></div>
-                <div class="route-links" id="routeLinks"></div>
-            </div>
         </div>
     </div>
 
@@ -1163,7 +1062,6 @@
             renderHiddenSpots();
             updateLocationDisplay();
             updateMarkers();
-            closeRouteInfo();
 
             // マップを移動
             const config = cityConfig[currentCity];
@@ -1463,70 +1361,9 @@
         function searchRoute() {
             if (!startLocation || !endLocation) return;
 
-            const R = 6371;
-            const dLat = (endLocation.lat - startLocation.lat) * Math.PI / 180;
-            const dLng = (endLocation.lng - startLocation.lng) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(startLocation.lat * Math.PI / 180) * Math.cos(endLocation.lat * Math.PI / 180) *
-                      Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            const distance = R * c;
-
-            const routeDetails = document.getElementById('routeDetails');
-            const modeInfo = {
-                transit: { icon: '🚃', name: '公共交通', speed: 25, tip: '混雑時は余裕を持って' },
-                walking: { icon: '🚶', name: '徒歩', speed: 5, tip: '歩きやすい靴で' },
-                driving: { icon: '🚗', name: '車', speed: 40, tip: '駐車場を確認' }
-            };
-
-            const info = modeInfo[routeMode];
-            const estimatedTime = Math.ceil((distance / info.speed) * 60);
-
-            routeDetails.innerHTML = `
-                <div class="route-detail-item">
-                    <span class="icon">${info.icon}</span>
-                    <div>
-                        <div class="value">${info.name}</div>
-                        <div class="label">移動手段</div>
-                    </div>
-                </div>
-                <div class="route-detail-item">
-                    <span class="icon">📏</span>
-                    <div>
-                        <div class="value">${distance.toFixed(1)} km</div>
-                        <div class="label">距離</div>
-                    </div>
-                </div>
-                <div class="route-detail-item">
-                    <span class="icon">⏱️</span>
-                    <div>
-                        <div class="value">約${estimatedTime}分</div>
-                        <div class="label">所要時間</div>
-                    </div>
-                </div>
-                <div class="route-detail-item">
-                    <span class="icon">💡</span>
-                    <div>
-                        <div class="value">${info.tip}</div>
-                        <div class="label">ヒント</div>
-                    </div>
-                </div>
-            `;
-
-            const routeLinks = document.getElementById('routeLinks');
+            // Google Mapsを直接開く
             const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${startLocation.lat},${startLocation.lng}&destination=${endLocation.lat},${endLocation.lng}&travelmode=${routeMode}`;
-
-            routeLinks.innerHTML = `
-                <a href="${googleMapsUrl}" target="_blank" class="route-link-btn google">
-                    🗺️ Google Mapsで詳細を見る
-                </a>
-            `;
-
-            document.getElementById('routeInfoPanel').classList.add('visible');
-        }
-
-        function closeRouteInfo() {
-            document.getElementById('routeInfoPanel').classList.remove('visible');
+            window.open(googleMapsUrl, '_blank');
         }
 
         function switchTab(tabName) {
@@ -1833,7 +1670,6 @@
                 renderSavedSpots();
                 renderHiddenSpots();
                 updateMarkers();
-                closeRouteInfo();
             }
         }
 
