@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シドニー観光マップ</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0077b6 0%, #00b4d8 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .header-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 350px;
+            background: white;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-section h3 {
+            font-size: 1rem;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .location-setting {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .location-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .location-label {
+            width: 60px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .location-label.start { color: #22c55e; }
+        .location-label.end { color: #ef4444; }
+
+        .location-display {
+            flex: 1;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #666;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+        }
+
+        .location-display.has-value {
+            color: #333;
+            background: #e8f5e9;
+        }
+
+        .location-display.has-value.end {
+            background: #ffebee;
+        }
+
+        .clear-btn {
+            background: #f0f0f0;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .clear-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .route-search-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #0077b6 0%, #00b4d8 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .route-search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,119,182,0.3);
+        }
+
+        .route-search-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .route-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .route-option {
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border: 2px solid transparent;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .route-option:hover {
+            background: #e0e0e0;
+        }
+
+        .route-option.selected {
+            background: #e3f2fd;
+            border-color: #0077b6;
+            color: #0077b6;
+        }
+
+        .spot-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .spot-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .spot-item:hover {
+            background: #e8f4f8;
+        }
+
+        .spot-item.selected {
+            background: #e3f2fd;
+            border: 2px solid #0077b6;
+        }
+
+        .spot-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: #0077b6;
+        }
+
+        .spot-icon {
+            font-size: 1.2rem;
+        }
+
+        .spot-info {
+            flex: 1;
+        }
+
+        .spot-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .spot-category {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .spot-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .spot-action-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .spot-action-btn.start {
+            background: #dcfce7;
+            color: #22c55e;
+        }
+
+        .spot-action-btn.end {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        .spot-action-btn.delete {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .spot-action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .custom-spot-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .custom-spot-input {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .custom-spot-input:focus {
+            outline: none;
+            border-color: #0077b6;
+        }
+
+        .add-spot-btn {
+            padding: 10px;
+            background: #22c55e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .add-spot-btn:hover {
+            background: #16a34a;
+        }
+
+        .map-click-mode {
+            padding: 10px;
+            background: #fef3c7;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #92400e;
+            text-align: center;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .route-info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 1000;
+        }
+
+        .route-info-panel.visible {
+            display: block;
+        }
+
+        .route-info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .route-info-header h4 {
+            font-size: 1rem;
+            color: #333;
+        }
+
+        .close-route-info {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .route-details {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .route-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .route-detail-item .icon {
+            font-size: 1.2rem;
+        }
+
+        .route-detail-item .value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .route-detail-item .label {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .route-links {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .route-link-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .route-link-btn.google {
+            background: #4285f4;
+            color: white;
+        }
+
+        .route-link-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        /* 共有モーダル */
+        .share-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .share-overlay.visible {
+            display: flex;
+        }
+
+        .share-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .share-container h3 {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .share-url-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .share-url-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .copy-btn {
+            padding: 12px 20px;
+            background: #0077b6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .copy-btn:hover {
+            background: #005f8a;
+        }
+
+        .share-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .share-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .share-btn.line {
+            background: #06c755;
+            color: white;
+        }
+
+        .share-btn.twitter {
+            background: #1da1f2;
+            color: white;
+        }
+
+        .share-btn.close {
+            background: #f0f0f0;
+            color: #333;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .share-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 50vh;
+            }
+
+            .map-container {
+                height: 50vh;
+            }
+
+            .header h1 {
+                font-size: 1.1rem;
+            }
+        }
+
+        .custom-marker {
+            background: none;
+            border: none;
+        }
+
+        .marker-pin {
+            width: 30px;
+            height: 30px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        }
+
+        .marker-pin span {
+            transform: rotate(45deg);
+            font-size: 14px;
+        }
+
+        .saved-spots-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .saved-spot-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .saved-spot-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .saved-spot-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .delete-saved-btn {
+            background: #fee2e2;
+            color: #ef4444;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .delete-saved-btn:hover {
+            background: #fecaca;
+        }
+
+        .tab-container {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: #0077b6;
+            border-bottom: 3px solid #0077b6;
+            margin-bottom: -2px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .category-filter {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .category-btn {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-btn.active {
+            background: #0077b6;
+            color: white;
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🦘 シドニー観光マップ</h1>
+        <div class="header-buttons">
+            <button class="header-btn" onclick="shareUrl()">🔗 共有</button>
+            <button class="header-btn" onclick="clearAllData()">🗑️ リセット</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h3>📍 現在地・目的地</h3>
+                <div class="location-setting">
+                    <div class="location-input-group">
+                        <span class="location-label start">出発地</span>
+                        <div class="location-display" id="startDisplay">タップで設定</div>
+                        <button class="clear-btn" onclick="clearLocation('start')">✕</button>
+                    </div>
+                    <div class="location-input-group">
+                        <span class="location-label end">目的地</span>
+                        <div class="location-display" id="endDisplay">タップで設定</div>
+                        <button class="clear-btn" onclick="clearLocation('end')">✕</button>
+                    </div>
+                    <button class="route-search-btn" id="searchRouteBtn" onclick="searchRoute()" disabled>
+                        🔍 経路を検索
+                    </button>
+                    <div class="route-options">
+                        <button class="route-option selected" data-mode="transit" onclick="selectRouteMode(this)">🚃 公共交通</button>
+                        <button class="route-option" data-mode="walking" onclick="selectRouteMode(this)">🚶 徒歩</button>
+                        <button class="route-option" data-mode="driving" onclick="selectRouteMode(this)">🚗 車</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-container">
+                <button class="tab-btn active" onclick="switchTab('spots')">観光地</button>
+                <button class="tab-btn" onclick="switchTab('custom')">カスタム追加</button>
+                <button class="tab-btn" onclick="switchTab('saved')">保存済み</button>
+            </div>
+
+            <div class="sidebar-section tab-content active" id="tab-spots">
+                <div class="category-filter">
+                    <button class="category-btn active" onclick="filterCategory('all')">すべて</button>
+                    <button class="category-btn" onclick="filterCategory('landmark')">🏛️ 名所</button>
+                    <button class="category-btn" onclick="filterCategory('nature')">🌿 自然</button>
+                    <button class="category-btn" onclick="filterCategory('culture')">🎭 文化</button>
+                    <button class="category-btn" onclick="filterCategory('food')">🍽️ グルメ</button>
+                </div>
+                <div class="spot-list" id="spotList"></div>
+            </div>
+
+            <div class="sidebar-section tab-content" id="tab-custom">
+                <div class="custom-spot-form">
+                    <input type="text" class="custom-spot-input" id="customSpotName" placeholder="地点名を入力">
+                    <div class="map-click-mode" id="mapClickMode">
+                        📍 マップをクリックして位置を選択してください
+                    </div>
+                    <div id="selectedCoords" style="font-size: 0.85rem; color: #666; text-align: center;"></div>
+                    <button class="add-spot-btn" onclick="addCustomSpot()">➕ この地点を追加</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section tab-content" id="tab-saved">
+                <div class="saved-spots-list" id="savedSpotsList"></div>
+            </div>
+        </div>
+
+        <div class="map-container" id="mapContainer">
+            <div id="map"></div>
+
+            <div class="route-info-panel" id="routeInfoPanel">
+                <div class="route-info-header">
+                    <h4>📍 経路情報</h4>
+                    <button class="close-route-info" onclick="closeRouteInfo()">✕</button>
+                </div>
+                <div class="route-details" id="routeDetails"></div>
+                <div class="route-links" id="routeLinks"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 共有モーダル -->
+    <div class="share-overlay" id="shareOverlay">
+        <div class="share-container">
+            <h3>🔗 マップを共有</h3>
+            <div class="share-url-box">
+                <input type="text" class="share-url-input" id="shareUrlInput" readonly>
+                <button class="copy-btn" onclick="copyShareUrl()">コピー</button>
+            </div>
+            <div class="share-buttons">
+                <a href="#" class="share-btn line" id="lineShareBtn" target="_blank">
+                    📱 LINE
+                </a>
+                <a href="#" class="share-btn twitter" id="twitterShareBtn" target="_blank">
+                    🐦 Twitter
+                </a>
+            </div>
+            <button class="share-btn close" onclick="closeShareModal()">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        // シドニーの主要観光地データ
+        const sydneySpots = [
+            { id: 1, name: "オペラハウス", nameEn: "Sydney Opera House", category: "landmark", icon: "🎭", lat: -33.8568, lng: 151.2153, description: "世界遺産の象徴的建築" },
+            { id: 2, name: "ハーバーブリッジ", nameEn: "Sydney Harbour Bridge", category: "landmark", icon: "🌉", lat: -33.8523, lng: 151.2108, description: "シドニーのアイコン" },
+            { id: 3, name: "ボンダイビーチ", nameEn: "Bondi Beach", category: "nature", icon: "🏖️", lat: -33.8908, lng: 151.2743, description: "有名なサーフビーチ" },
+            { id: 4, name: "ロイヤル植物園", nameEn: "Royal Botanic Garden", category: "nature", icon: "🌿", lat: -33.8642, lng: 151.2166, description: "美しい庭園" },
+            { id: 5, name: "タロンガ動物園", nameEn: "Taronga Zoo", category: "nature", icon: "🦁", lat: -33.8436, lng: 151.2411, description: "絶景の動物園" },
+            { id: 6, name: "ダーリングハーバー", nameEn: "Darling Harbour", category: "landmark", icon: "⚓", lat: -33.8724, lng: 151.1995, description: "ウォーターフロントエリア" },
+            { id: 7, name: "ザ・ロックス", nameEn: "The Rocks", category: "culture", icon: "🏛️", lat: -33.8599, lng: 151.2090, description: "歴史地区" },
+            { id: 8, name: "フィッシュマーケット", nameEn: "Sydney Fish Market", category: "food", icon: "🦞", lat: -33.8710, lng: 151.1916, description: "新鮮なシーフード" },
+            { id: 9, name: "チャイナタウン", nameEn: "Chinatown", category: "food", icon: "🥡", lat: -33.8785, lng: 151.2044, description: "アジア料理の宝庫" },
+            { id: 10, name: "NSW美術館", nameEn: "Art Gallery of NSW", category: "culture", icon: "🖼️", lat: -33.8688, lng: 151.2173, description: "オーストラリアアート" },
+            { id: 11, name: "シドニータワー", nameEn: "Sydney Tower Eye", category: "landmark", icon: "🗼", lat: -33.8705, lng: 151.2089, description: "360度パノラマビュー" },
+            { id: 12, name: "マンリービーチ", nameEn: "Manly Beach", category: "nature", icon: "🌊", lat: -33.7969, lng: 151.2879, description: "フェリーで行くビーチ" },
+            { id: 13, name: "ルナパーク", nameEn: "Luna Park", category: "culture", icon: "🎡", lat: -33.8474, lng: 151.2093, description: "レトロな遊園地" },
+            { id: 14, name: "サーキュラーキー", nameEn: "Circular Quay", category: "landmark", icon: "🚢", lat: -33.8611, lng: 151.2107, description: "フェリーターミナル" },
+            { id: 15, name: "ブルーマウンテンズ", nameEn: "Blue Mountains", category: "nature", icon: "⛰️", lat: -33.7182, lng: 150.3119, description: "世界遺産の山岳地帯" }
+        ];
+
+        // 状態管理
+        let map;
+        let markers = {};
+        let startLocation = null;
+        let endLocation = null;
+        let selectedSpots = new Set();
+        let customSpots = [];
+        let currentCategory = 'all';
+        let routeMode = 'transit';
+        let routeLine = null;
+        let tempCustomLocation = null;
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            loadFromUrl();
+            loadFromLocalStorage();
+            renderSpotList();
+            renderSavedSpots();
+            updateMarkers();
+        });
+
+        // URLパラメータから読み込み
+        function loadFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+
+            // 選択されたスポット
+            const spots = params.get('spots');
+            if (spots) {
+                spots.split(',').forEach(id => selectedSpots.add(parseInt(id)));
+            }
+
+            // カスタムスポット
+            const custom = params.get('custom');
+            if (custom) {
+                try {
+                    customSpots = JSON.parse(decodeURIComponent(custom));
+                    customSpots.forEach(s => selectedSpots.add(s.id));
+                } catch (e) {}
+            }
+
+            // 出発地
+            const start = params.get('start');
+            if (start) {
+                const [name, lat, lng] = start.split('|');
+                startLocation = { name: decodeURIComponent(name), lat: parseFloat(lat), lng: parseFloat(lng) };
+            }
+
+            // 目的地
+            const end = params.get('end');
+            if (end) {
+                const [name, lat, lng] = end.split('|');
+                endLocation = { name: decodeURIComponent(name), lat: parseFloat(lat), lng: parseFloat(lng) };
+            }
+
+            updateLocationDisplay();
+        }
+
+        // マップ初期化
+        function initMap() {
+            map = L.map('map').setView([-33.8688, 151.2093], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            map.on('click', function(e) {
+                if (document.getElementById('tab-custom').classList.contains('active')) {
+                    tempCustomLocation = { lat: e.latlng.lat, lng: e.latlng.lng };
+                    document.getElementById('selectedCoords').textContent =
+                        `選択位置: ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;
+
+                    if (markers['temp']) {
+                        map.removeLayer(markers['temp']);
+                    }
+                    markers['temp'] = L.marker([e.latlng.lat, e.latlng.lng], {
+                        icon: createCustomIcon('📍', '#fbbf24')
+                    }).addTo(map);
+                }
+            });
+        }
+
+        function createCustomIcon(emoji, color) {
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="marker-pin" style="background: ${color}"><span>${emoji}</span></div>`,
+                iconSize: [30, 40],
+                iconAnchor: [15, 40],
+                popupAnchor: [0, -40]
+            });
+        }
+
+        function renderSpotList() {
+            const container = document.getElementById('spotList');
+            const allSpots = [...sydneySpots, ...customSpots];
+            const filteredSpots = currentCategory === 'all'
+                ? allSpots
+                : allSpots.filter(s => s.category === currentCategory || (currentCategory === 'custom' && s.category === 'custom'));
+
+            container.innerHTML = filteredSpots.map(spot => `
+                <div class="spot-item ${selectedSpots.has(spot.id) ? 'selected' : ''}" onclick="toggleSpot(${spot.id})">
+                    <input type="checkbox" class="spot-checkbox" ${selectedSpots.has(spot.id) ? 'checked' : ''}>
+                    <span class="spot-icon">${spot.icon}</span>
+                    <div class="spot-info">
+                        <div class="spot-name">${spot.name}</div>
+                        <div class="spot-category">${spot.description || spot.nameEn}</div>
+                    </div>
+                    <div class="spot-actions">
+                        <button class="spot-action-btn start" onclick="event.stopPropagation(); setAsStart(${spot.id})" title="出発地に設定">S</button>
+                        <button class="spot-action-btn end" onclick="event.stopPropagation(); setAsEnd(${spot.id})" title="目的地に設定">E</button>
+                        ${spot.category === 'custom' ? `<button class="spot-action-btn delete" onclick="event.stopPropagation(); deleteSpot(${spot.id})" title="削除">✕</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleSpot(id) {
+            if (selectedSpots.has(id)) {
+                selectedSpots.delete(id);
+            } else {
+                selectedSpots.add(id);
+            }
+            renderSpotList();
+            updateMarkers();
+            saveToLocalStorage();
+        }
+
+        // 地点を削除
+        function deleteSpot(id) {
+            if (!confirm('この地点を削除しますか？')) return;
+
+            // カスタムスポットから削除
+            customSpots = customSpots.filter(s => s.id !== id);
+
+            // 選択リストからも削除
+            selectedSpots.delete(id);
+
+            // 出発地・目的地の確認
+            const allSpots = [...sydneySpots, ...customSpots];
+            const deletedSpot = allSpots.find(s => s.id === id);
+
+            if (startLocation && deletedSpot && startLocation.lat === deletedSpot.lat && startLocation.lng === deletedSpot.lng) {
+                startLocation = null;
+            }
+            if (endLocation && deletedSpot && endLocation.lat === deletedSpot.lat && endLocation.lng === deletedSpot.lng) {
+                endLocation = null;
+            }
+
+            updateLocationDisplay();
+            renderSpotList();
+            renderSavedSpots();
+            updateMarkers();
+            saveToLocalStorage();
+        }
+
+        function setAsStart(id) {
+            const allSpots = [...sydneySpots, ...customSpots];
+            const spot = allSpots.find(s => s.id === id);
+            if (spot) {
+                startLocation = { name: spot.name, lat: spot.lat, lng: spot.lng };
+                updateLocationDisplay();
+                updateMarkers();
+                saveToLocalStorage();
+            }
+        }
+
+        function setAsEnd(id) {
+            const allSpots = [...sydneySpots, ...customSpots];
+            const spot = allSpots.find(s => s.id === id);
+            if (spot) {
+                endLocation = { name: spot.name, lat: spot.lat, lng: spot.lng };
+                updateLocationDisplay();
+                updateMarkers();
+                saveToLocalStorage();
+            }
+        }
+
+        function updateLocationDisplay() {
+            const startDisplay = document.getElementById('startDisplay');
+            const endDisplay = document.getElementById('endDisplay');
+            const searchBtn = document.getElementById('searchRouteBtn');
+
+            if (startLocation) {
+                startDisplay.textContent = startLocation.name;
+                startDisplay.classList.add('has-value');
+            } else {
+                startDisplay.textContent = 'タップで設定';
+                startDisplay.classList.remove('has-value');
+            }
+
+            if (endLocation) {
+                endDisplay.textContent = endLocation.name;
+                endDisplay.classList.add('has-value', 'end');
+            } else {
+                endDisplay.textContent = 'タップで設定';
+                endDisplay.classList.remove('has-value', 'end');
+            }
+
+            searchBtn.disabled = !(startLocation && endLocation);
+        }
+
+        function clearLocation(type) {
+            if (type === 'start') {
+                startLocation = null;
+            } else {
+                endLocation = null;
+            }
+            updateLocationDisplay();
+            updateMarkers();
+            if (routeLine) {
+                map.removeLayer(routeLine);
+                routeLine = null;
+            }
+            document.getElementById('routeInfoPanel').classList.remove('visible');
+            saveToLocalStorage();
+        }
+
+        function updateMarkers() {
+            Object.keys(markers).forEach(key => {
+                if (key !== 'temp') {
+                    map.removeLayer(markers[key]);
+                    delete markers[key];
+                }
+            });
+
+            const allSpots = [...sydneySpots, ...customSpots];
+
+            selectedSpots.forEach(id => {
+                const spot = allSpots.find(s => s.id === id);
+                if (spot) {
+                    let color = '#0077b6';
+                    let emoji = spot.icon;
+
+                    if (startLocation && startLocation.lat === spot.lat && startLocation.lng === spot.lng) {
+                        color = '#22c55e';
+                        emoji = '🚩';
+                    } else if (endLocation && endLocation.lat === spot.lat && endLocation.lng === spot.lng) {
+                        color = '#ef4444';
+                        emoji = '📍';
+                    }
+
+                    markers[`spot-${id}`] = L.marker([spot.lat, spot.lng], {
+                        icon: createCustomIcon(emoji, color)
+                    }).addTo(map).bindPopup(`
+                        <strong>${spot.name}</strong><br>
+                        ${spot.nameEn || ''}<br>
+                        <small>${spot.description || ''}</small>
+                    `);
+                }
+            });
+
+            if (startLocation && endLocation) {
+                if (routeLine) {
+                    map.removeLayer(routeLine);
+                }
+                routeLine = L.polyline([
+                    [startLocation.lat, startLocation.lng],
+                    [endLocation.lat, endLocation.lng]
+                ], {
+                    color: '#0077b6',
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '10, 10'
+                }).addTo(map);
+
+                const bounds = L.latLngBounds([
+                    [startLocation.lat, startLocation.lng],
+                    [endLocation.lat, endLocation.lng]
+                ]);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        function selectRouteMode(btn) {
+            document.querySelectorAll('.route-option').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            routeMode = btn.dataset.mode;
+        }
+
+        function searchRoute() {
+            if (!startLocation || !endLocation) return;
+
+            const R = 6371;
+            const dLat = (endLocation.lat - startLocation.lat) * Math.PI / 180;
+            const dLng = (endLocation.lng - startLocation.lng) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(startLocation.lat * Math.PI / 180) * Math.cos(endLocation.lat * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
+
+            const routeDetails = document.getElementById('routeDetails');
+            const modeInfo = {
+                transit: { icon: '🚃', name: '公共交通', speed: 25, tip: '混雑時は余裕を持って' },
+                walking: { icon: '🚶', name: '徒歩', speed: 5, tip: '歩きやすい靴で' },
+                driving: { icon: '🚗', name: '車', speed: 40, tip: '駐車場を確認' }
+            };
+
+            const info = modeInfo[routeMode];
+            const estimatedTime = Math.ceil((distance / info.speed) * 60);
+
+            routeDetails.innerHTML = `
+                <div class="route-detail-item">
+                    <span class="icon">${info.icon}</span>
+                    <div>
+                        <div class="value">${info.name}</div>
+                        <div class="label">移動手段</div>
+                    </div>
+                </div>
+                <div class="route-detail-item">
+                    <span class="icon">📏</span>
+                    <div>
+                        <div class="value">${distance.toFixed(1)} km</div>
+                        <div class="label">距離</div>
+                    </div>
+                </div>
+                <div class="route-detail-item">
+                    <span class="icon">⏱️</span>
+                    <div>
+                        <div class="value">約${estimatedTime}分</div>
+                        <div class="label">所要時間</div>
+                    </div>
+                </div>
+                <div class="route-detail-item">
+                    <span class="icon">💡</span>
+                    <div>
+                        <div class="value">${info.tip}</div>
+                        <div class="label">ヒント</div>
+                    </div>
+                </div>
+            `;
+
+            const routeLinks = document.getElementById('routeLinks');
+            const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${startLocation.lat},${startLocation.lng}&destination=${endLocation.lat},${endLocation.lng}&travelmode=${routeMode}`;
+
+            routeLinks.innerHTML = `
+                <a href="${googleMapsUrl}" target="_blank" class="route-link-btn google">
+                    🗺️ Google Mapsで詳細を見る
+                </a>
+            `;
+
+            document.getElementById('routeInfoPanel').classList.add('visible');
+        }
+
+        function closeRouteInfo() {
+            document.getElementById('routeInfoPanel').classList.remove('visible');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            document.querySelector(`.tab-btn:nth-child(${tabName === 'spots' ? 1 : tabName === 'custom' ? 2 : 3})`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            if (tabName !== 'custom' && markers['temp']) {
+                map.removeLayer(markers['temp']);
+                delete markers['temp'];
+                tempCustomLocation = null;
+                document.getElementById('selectedCoords').textContent = '';
+            }
+        }
+
+        function filterCategory(category) {
+            currentCategory = category;
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.toggle('active',
+                    (category === 'all' && btn.textContent === 'すべて') ||
+                    btn.textContent.includes(getCategoryIcon(category))
+                );
+            });
+            renderSpotList();
+        }
+
+        function getCategoryIcon(category) {
+            const icons = { landmark: '🏛️', nature: '🌿', culture: '🎭', food: '🍽️' };
+            return icons[category] || '';
+        }
+
+        function addCustomSpot() {
+            const name = document.getElementById('customSpotName').value.trim();
+            if (!name || !tempCustomLocation) {
+                alert('地点名を入力し、マップ上で位置を選択してください');
+                return;
+            }
+
+            const newSpot = {
+                id: Date.now(),
+                name: name,
+                nameEn: '',
+                category: 'custom',
+                icon: '📌',
+                lat: tempCustomLocation.lat,
+                lng: tempCustomLocation.lng,
+                description: 'カスタム追加'
+            };
+
+            customSpots.push(newSpot);
+            selectedSpots.add(newSpot.id);
+
+            document.getElementById('customSpotName').value = '';
+            document.getElementById('selectedCoords').textContent = '';
+            tempCustomLocation = null;
+            if (markers['temp']) {
+                map.removeLayer(markers['temp']);
+                delete markers['temp'];
+            }
+
+            renderSpotList();
+            renderSavedSpots();
+            updateMarkers();
+            saveToLocalStorage();
+
+            alert(`「${name}」を追加しました！`);
+        }
+
+        function renderSavedSpots() {
+            const container = document.getElementById('savedSpotsList');
+            if (customSpots.length === 0) {
+                container.innerHTML = '<p class="empty-message">保存済みの地点はありません</p>';
+                return;
+            }
+
+            container.innerHTML = customSpots.map(spot => `
+                <div class="saved-spot-item">
+                    <div class="saved-spot-info">
+                        <span>${spot.icon}</span>
+                        <span>${spot.name}</span>
+                    </div>
+                    <div class="saved-spot-actions">
+                        <button class="spot-action-btn start" onclick="setAsStart(${spot.id})" title="出発地に設定">S</button>
+                        <button class="spot-action-btn end" onclick="setAsEnd(${spot.id})" title="目的地に設定">E</button>
+                        <button class="delete-saved-btn" onclick="deleteSpot(${spot.id})">削除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveToLocalStorage() {
+            const data = {
+                selectedSpots: Array.from(selectedSpots),
+                customSpots: customSpots,
+                startLocation: startLocation,
+                endLocation: endLocation
+            };
+            localStorage.setItem('sydneyTravelMap', JSON.stringify(data));
+        }
+
+        function loadFromLocalStorage() {
+            // URLパラメータがある場合はそちらを優先
+            if (window.location.search) return;
+
+            const saved = localStorage.getItem('sydneyTravelMap');
+            if (saved) {
+                const data = JSON.parse(saved);
+                selectedSpots = new Set(data.selectedSpots || []);
+                customSpots = data.customSpots || [];
+                startLocation = data.startLocation || null;
+                endLocation = data.endLocation || null;
+                updateLocationDisplay();
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('すべてのデータをリセットしますか？')) {
+                localStorage.removeItem('sydneyTravelMap');
+                selectedSpots.clear();
+                customSpots = [];
+                startLocation = null;
+                endLocation = null;
+                if (routeLine) {
+                    map.removeLayer(routeLine);
+                    routeLine = null;
+                }
+                // URLパラメータもクリア
+                window.history.replaceState({}, '', window.location.pathname);
+                updateLocationDisplay();
+                renderSpotList();
+                renderSavedSpots();
+                updateMarkers();
+                closeRouteInfo();
+            }
+        }
+
+        // 共有URL生成
+        function generateShareUrl() {
+            const params = new URLSearchParams();
+
+            // 選択されたスポット（デフォルトのもののみ）
+            const defaultSpotIds = Array.from(selectedSpots).filter(id => sydneySpots.some(s => s.id === id));
+            if (defaultSpotIds.length > 0) {
+                params.set('spots', defaultSpotIds.join(','));
+            }
+
+            // カスタムスポット
+            if (customSpots.length > 0) {
+                params.set('custom', encodeURIComponent(JSON.stringify(customSpots)));
+            }
+
+            // 出発地
+            if (startLocation) {
+                params.set('start', `${encodeURIComponent(startLocation.name)}|${startLocation.lat}|${startLocation.lng}`);
+            }
+
+            // 目的地
+            if (endLocation) {
+                params.set('end', `${encodeURIComponent(endLocation.name)}|${endLocation.lat}|${endLocation.lng}`);
+            }
+
+            const baseUrl = window.location.origin + window.location.pathname;
+            return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+        }
+
+        // 共有モーダルを開く
+        function shareUrl() {
+            const shareUrl = generateShareUrl();
+            document.getElementById('shareUrlInput').value = shareUrl;
+
+            const text = `シドニー観光マップ`;
+            document.getElementById('lineShareBtn').href = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+            document.getElementById('twitterShareBtn').href = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+
+            document.getElementById('shareOverlay').classList.add('visible');
+        }
+
+        // URLをコピー
+        function copyShareUrl() {
+            const input = document.getElementById('shareUrlInput');
+            input.select();
+            document.execCommand('copy');
+            alert('URLをコピーしました！');
+        }
+
+        // 共有モーダルを閉じる
+        function closeShareModal() {
+            document.getElementById('shareOverlay').classList.remove('visible');
+        }
+    </script>
+</body>
+</html>
