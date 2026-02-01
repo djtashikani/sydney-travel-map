@@ -1207,6 +1207,13 @@
             }, 1000); // 1秒後に同期
         }
 
+        // ページがフォーカスされた時に再同期
+        document.addEventListener('visibilitychange', async function() {
+            if (document.visibilityState === 'visible' && currentUserId) {
+                await loadFromCloud();
+            }
+        });
+
         // シドニーの主要観光地データ
         const sydneySpots = [
             { id: 1, name: "オペラハウス", nameEn: "Sydney Opera House", category: "landmark", icon: "🎭", lat: -33.8568, lng: 151.2153, description: "世界遺産の象徴的建築" },

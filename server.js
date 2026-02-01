@@ -1,6 +1,5 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,11 +10,9 @@ app.use(express.json());
 // 静的ファイルを提供
 app.use(express.static(path.join(__dirname, 'public')));
 
-// データ保存ディレクトリ
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+// インメモリデータストア（Renderの再起動で消えるが、セッション中は保持）
+// 本番環境では外部データベースを使用することを推奨
+const dataStore = new Map();
 
 // ユーザーデータを取得
 app.get('/api/sync/:userId', (req, res) => {
@@ -24,15 +21,9 @@ app.get('/api/sync/:userId', (req, res) => {
         return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    const filePath = path.join(DATA_DIR, `${userId}.json`);
-
-    if (fs.existsSync(filePath)) {
-        try {
-            const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            res.json({ success: true, data });
-        } catch (e) {
-            res.json({ success: true, data: null });
-        }
+    const data = dataStore.get(userId);
+    if (data) {
+        res.json({ success: true, data });
     } else {
         res.json({ success: true, data: null });
     }
@@ -45,18 +36,22 @@ app.post('/api/sync/:userId', (req, res) => {
         return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    const filePath = path.join(DATA_DIR, `${userId}.json`);
     const data = {
         ...req.body,
         updatedAt: new Date().toISOString()
     };
 
-    try {
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-        res.json({ success: true, updatedAt: data.updatedAt });
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to save data' });
-    }
+    dataStore.set(userId, data);
+    console.log(`Data saved for user: ${userId}`, JSON.stringify(data).substring(0, 200));
+
+    res.json({ success: true, updatedAt: data.updatedAt });
+});
+
+// デバッグ用：保存されているデータを確認
+app.get('/api/debug/:userId', (req, res) => {
+    const userId = req.params.userId.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const data = dataStore.get(userId);
+    res.json({ userId, hasData: !!data, data });
 });
 
 // メインページ
