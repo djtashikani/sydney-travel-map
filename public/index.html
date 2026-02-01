@@ -792,6 +792,36 @@
             margin-bottom: 10px;
         }
 
+        .category-select {
+            margin: 10px 0;
+        }
+
+        .category-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .category-option {
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border: 2px solid transparent;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-option:hover {
+            background: #e0e0e0;
+        }
+
+        .category-option.selected {
+            background: #e3f2fd;
+            border-color: #0077b6;
+            color: #0077b6;
+        }
+
         .category-btn {
             padding: 6px 12px;
             background: #f0f0f0;
@@ -1026,6 +1056,15 @@
                     <div id="selectedCoords" style="font-size: 0.85rem; color: #666; text-align: center;"></div>
                     <div class="selected-location-info" id="selectedLocationInfo"></div>
                     <input type="text" class="custom-spot-input" id="customSpotName" placeholder="保存する名前（空欄で検索結果の名前を使用）">
+                    <div class="category-select">
+                        <label style="font-size: 0.85rem; color: #666; margin-bottom: 5px; display: block;">カテゴリを選択:</label>
+                        <div class="category-options" id="categoryOptions">
+                            <button type="button" class="category-option" data-category="landmark" onclick="selectCategory('landmark')">🏛️ 名所</button>
+                            <button type="button" class="category-option" data-category="nature" onclick="selectCategory('nature')">🌿 自然</button>
+                            <button type="button" class="category-option" data-category="culture" onclick="selectCategory('culture')">🎭 文化</button>
+                            <button type="button" class="category-option" data-category="food" onclick="selectCategory('food')">🍽️ グルメ</button>
+                        </div>
+                    </div>
                     <button class="add-spot-btn" onclick="addCustomSpot()">➕ この地点を追加</button>
                 </div>
             </div>
@@ -1308,6 +1347,23 @@
         let tempCustomLocation = null;
         let selectedSearchResult = null; // 検索で選択した場所
         let draggedItem = null; // ドラッグ中のアイテム
+        let selectedCustomCategory = null; // カスタムスポットのカテゴリ
+
+        // カテゴリアイコンのマッピング
+        const categoryIcons = {
+            landmark: '🏛️',
+            nature: '🌿',
+            culture: '🎭',
+            food: '🍽️'
+        };
+
+        // カテゴリを選択
+        function selectCategory(category) {
+            selectedCustomCategory = category;
+            document.querySelectorAll('.category-option').forEach(btn => {
+                btn.classList.toggle('selected', btn.dataset.category === category);
+            });
+        }
 
         // 初期化
         document.addEventListener('DOMContentLoaded', async function() {
@@ -1544,7 +1600,7 @@
                     <div class="spot-actions">
                         <button class="spot-action-btn start" onclick="event.stopPropagation(); setAsStart(${spot.id})" title="出発地に設定">S</button>
                         <button class="spot-action-btn end" onclick="event.stopPropagation(); setAsEnd(${spot.id})" title="目的地に設定">E</button>
-                        <button class="spot-action-btn delete" onclick="event.stopPropagation(); deleteSpot(${spot.id}, ${spot.category === 'custom'})" title="削除">✕</button>
+                        <button class="spot-action-btn delete" onclick="event.stopPropagation(); deleteSpot(${spot.id}, ${spot.isCustom === true})" title="削除">✕</button>
                     </div>
                 </div>
             `).join('');
@@ -2056,15 +2112,20 @@
                 return;
             }
 
+            // カテゴリとアイコンの決定
+            const category = selectedCustomCategory || 'landmark';
+            const icon = categoryIcons[category] || '📌';
+
             const newSpot = {
                 id: Date.now(),
                 name: name,
                 nameEn: selectedSearchResult ? selectedSearchResult.address : '',
-                category: 'custom',
-                icon: '📌',
+                category: category,
+                icon: icon,
                 lat: tempCustomLocation.lat,
                 lng: tempCustomLocation.lng,
-                description: selectedSearchResult ? selectedSearchResult.address.split(',').slice(0, 2).join(', ') : 'カスタム追加'
+                description: selectedSearchResult ? selectedSearchResult.address.split(',').slice(0, 2).join(', ') : 'カスタム追加',
+                isCustom: true // カスタム追加フラグ
             };
 
             customSpots.push(newSpot);
@@ -2077,6 +2138,9 @@
             document.getElementById('searchResults').innerHTML = '';
             document.getElementById('selectedLocationInfo').classList.remove('visible');
             document.getElementById('selectedLocationInfo').innerHTML = '';
+            // カテゴリ選択をリセット
+            selectedCustomCategory = null;
+            document.querySelectorAll('.category-option').forEach(btn => btn.classList.remove('selected'));
 
             tempCustomLocation = null;
             selectedSearchResult = null;
