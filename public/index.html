@@ -950,6 +950,7 @@
                 <span class="sync-indicator" id="syncIndicator"></span>
                 <span class="user-id" id="displayUserId">未ログイン</span>
             </div>
+            <button class="header-btn" onclick="refreshData()" id="refreshBtn" title="最新情報に更新">🔄</button>
             <button class="header-btn" onclick="shareUrl()">🔗 共有</button>
             <button class="header-btn" onclick="clearAllData()">🗑️ リセット</button>
         </div>
@@ -1213,6 +1214,27 @@
                 await loadFromCloud();
             }
         });
+
+        // 手動で最新情報に更新
+        async function refreshData() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '⏳';
+
+            if (currentUserId) {
+                await loadFromCloud();
+            } else {
+                // ログインしていない場合はページをリロード
+                location.reload();
+                return;
+            }
+
+            refreshBtn.textContent = '✅';
+            setTimeout(() => {
+                refreshBtn.textContent = '🔄';
+                refreshBtn.disabled = false;
+            }, 1000);
+        }
 
         // シドニーの主要観光地データ
         const sydneySpots = [
