@@ -676,6 +676,154 @@
             background: #bfdbfe;
         }
 
+        /* 検索機能 */
+        .search-box {
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-box .custom-spot-input {
+            flex: 1;
+        }
+
+        .search-btn {
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #0077b6 0%, #00b4d8 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover {
+            opacity: 0.9;
+        }
+
+        .search-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f0f9ff;
+            border: 2px solid #e0f2fe;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-result-item:hover {
+            background: #e0f2fe;
+            border-color: #0077b6;
+        }
+
+        .search-result-item.selected {
+            background: #dbeafe;
+            border-color: #0077b6;
+        }
+
+        .search-result-icon {
+            font-size: 1.2rem;
+        }
+
+        .search-result-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .search-result-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-address {
+            font-size: 0.75rem;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .divider {
+            text-align: center;
+            color: #999;
+            font-size: 0.85rem;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: #ddd;
+        }
+
+        .divider::before {
+            left: 0;
+        }
+
+        .divider::after {
+            right: 0;
+        }
+
+        .selected-location-info {
+            padding: 10px;
+            background: #f0fdf4;
+            border: 2px solid #86efac;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .selected-location-info.visible {
+            display: block;
+        }
+
+        .selected-location-info .name {
+            font-weight: bold;
+            color: #166534;
+        }
+
+        .selected-location-info .address {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        .searching-indicator {
+            text-align: center;
+            padding: 15px;
+            color: #666;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 15px;
+            color: #999;
+            font-size: 0.9rem;
+        }
+
         .tab-container {
             display: flex;
             border-bottom: 2px solid #e0e0e0;
@@ -801,11 +949,18 @@
 
             <div class="sidebar-section tab-content" id="tab-custom">
                 <div class="custom-spot-form">
-                    <input type="text" class="custom-spot-input" id="customSpotName" placeholder="地点名を入力">
+                    <div class="search-box">
+                        <input type="text" class="custom-spot-input" id="searchInput" placeholder="🔍 場所を検索（例: W Hotel Sydney）">
+                        <button class="search-btn" onclick="searchLocation()">検索</button>
+                    </div>
+                    <div class="search-results" id="searchResults"></div>
+                    <div class="divider">または</div>
                     <div class="map-click-mode" id="mapClickMode">
-                        📍 マップをクリックして位置を選択してください
+                        📍 マップをクリックして位置を選択
                     </div>
                     <div id="selectedCoords" style="font-size: 0.85rem; color: #666; text-align: center;"></div>
+                    <div class="selected-location-info" id="selectedLocationInfo"></div>
+                    <input type="text" class="custom-spot-input" id="customSpotName" placeholder="保存する名前（空欄で検索結果の名前を使用）">
                     <button class="add-spot-btn" onclick="addCustomSpot()">➕ この地点を追加</button>
                 </div>
             </div>
@@ -921,6 +1076,7 @@
         let routeMode = 'transit';
         let routeLine = null;
         let tempCustomLocation = null;
+        let selectedSearchResult = null; // 検索で選択した場所
 
         // 初期化
         document.addEventListener('DOMContentLoaded', function() {
@@ -1384,7 +1540,11 @@
                 map.removeLayer(markers['temp']);
                 delete markers['temp'];
                 tempCustomLocation = null;
+                selectedSearchResult = null;
                 document.getElementById('selectedCoords').textContent = '';
+                document.getElementById('searchResults').innerHTML = '';
+                document.getElementById('searchInput').value = '';
+                document.getElementById('selectedLocationInfo').classList.remove('visible');
             }
         }
 
@@ -1404,30 +1564,192 @@
             return icons[category] || '';
         }
 
+        // 場所を検索
+        async function searchLocation() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                alert('検索キーワードを入力してください');
+                return;
+            }
+
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = '<div class="searching-indicator">🔍 検索中...</div>';
+
+            // 現在の都市に基づいて検索範囲を設定
+            const config = cityConfig[currentCity];
+            const viewbox = currentCity === 'sydney'
+                ? '150.5,-34.2,151.5,-33.5' // シドニー周辺
+                : '144.5,-38.2,145.5,-37.5'; // メルボルン周辺
+
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?` +
+                    `q=${encodeURIComponent(query + ' ' + config.name)}&` +
+                    `format=json&` +
+                    `addressdetails=1&` +
+                    `limit=5&` +
+                    `viewbox=${viewbox}&` +
+                    `bounded=0`,
+                    {
+                        headers: {
+                            'Accept-Language': 'ja,en'
+                        }
+                    }
+                );
+
+                const results = await response.json();
+
+                if (results.length === 0) {
+                    resultsContainer.innerHTML = '<div class="no-results">検索結果がありません。別のキーワードをお試しください。</div>';
+                    return;
+                }
+
+                resultsContainer.innerHTML = results.map((result, index) => {
+                    const icon = getPlaceIcon(result.type, result.class);
+                    const name = result.name || result.display_name.split(',')[0];
+                    const address = result.display_name;
+
+                    return `
+                        <div class="search-result-item" onclick="selectSearchResult(${index}, ${result.lat}, ${result.lon}, '${escapeHtml(name)}', '${escapeHtml(address)}')">
+                            <span class="search-result-icon">${icon}</span>
+                            <div class="search-result-info">
+                                <div class="search-result-name">${name}</div>
+                                <div class="search-result-address">${address}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Search error:', error);
+                resultsContainer.innerHTML = '<div class="no-results">検索中にエラーが発生しました。しばらくしてからお試しください。</div>';
+            }
+        }
+
+        // HTMLエスケープ
+        function escapeHtml(text) {
+            return text.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        // 場所タイプに応じたアイコンを取得
+        function getPlaceIcon(type, placeClass) {
+            const icons = {
+                'hotel': '🏨',
+                'restaurant': '🍽️',
+                'cafe': '☕',
+                'bar': '🍺',
+                'museum': '🏛️',
+                'gallery': '🖼️',
+                'theatre': '🎭',
+                'cinema': '🎬',
+                'park': '🌳',
+                'beach': '🏖️',
+                'station': '🚉',
+                'airport': '✈️',
+                'hospital': '🏥',
+                'pharmacy': '💊',
+                'bank': '🏦',
+                'shop': '🛒',
+                'supermarket': '🛒',
+                'mall': '🛍️',
+                'attraction': '⭐',
+                'viewpoint': '👀'
+            };
+            return icons[type] || icons[placeClass] || '📍';
+        }
+
+        // 検索結果を選択
+        function selectSearchResult(index, lat, lng, name, address) {
+            // 選択状態を更新
+            document.querySelectorAll('.search-result-item').forEach((item, i) => {
+                item.classList.toggle('selected', i === index);
+            });
+
+            // 位置情報を保存
+            tempCustomLocation = { lat: parseFloat(lat), lng: parseFloat(lng) };
+            selectedSearchResult = { name, address };
+
+            // マップにマーカーを表示
+            if (markers['temp']) {
+                map.removeLayer(markers['temp']);
+            }
+            markers['temp'] = L.marker([lat, lng], {
+                icon: createCustomIcon('📍', '#fbbf24')
+            }).addTo(map);
+
+            // マップを移動
+            map.setView([lat, lng], 16);
+
+            // 選択した場所の情報を表示
+            const infoContainer = document.getElementById('selectedLocationInfo');
+            infoContainer.innerHTML = `
+                <div class="name">✅ ${name}</div>
+                <div class="address">${address}</div>
+            `;
+            infoContainer.classList.add('visible');
+
+            // 座標も表示
+            document.getElementById('selectedCoords').textContent =
+                `選択位置: ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+        }
+
+        // Enterキーで検索
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            searchLocation();
+                        }
+                    });
+                }
+            }, 100);
+        });
+
         function addCustomSpot() {
-            const name = document.getElementById('customSpotName').value.trim();
-            if (!name || !tempCustomLocation) {
-                alert('地点名を入力し、マップ上で位置を選択してください');
+            const customName = document.getElementById('customSpotName').value.trim();
+
+            if (!tempCustomLocation) {
+                alert('検索結果を選択するか、マップ上で位置をクリックしてください');
+                return;
+            }
+
+            // 名前の決定: 入力があればそれを使用、なければ検索結果の名前を使用
+            let name = customName;
+            if (!name && selectedSearchResult) {
+                name = selectedSearchResult.name;
+            }
+            if (!name) {
+                alert('地点名を入力してください');
                 return;
             }
 
             const newSpot = {
                 id: Date.now(),
                 name: name,
-                nameEn: '',
+                nameEn: selectedSearchResult ? selectedSearchResult.address : '',
                 category: 'custom',
                 icon: '📌',
                 lat: tempCustomLocation.lat,
                 lng: tempCustomLocation.lng,
-                description: 'カスタム追加'
+                description: selectedSearchResult ? selectedSearchResult.address.split(',').slice(0, 2).join(', ') : 'カスタム追加'
             };
 
             customSpots.push(newSpot);
             selectedSpots.add(newSpot.id);
 
+            // フォームをリセット
             document.getElementById('customSpotName').value = '';
+            document.getElementById('searchInput').value = '';
             document.getElementById('selectedCoords').textContent = '';
+            document.getElementById('searchResults').innerHTML = '';
+            document.getElementById('selectedLocationInfo').classList.remove('visible');
+            document.getElementById('selectedLocationInfo').innerHTML = '';
+
             tempCustomLocation = null;
+            selectedSearchResult = null;
+
             if (markers['temp']) {
                 map.removeLayer(markers['temp']);
                 delete markers['temp'];
