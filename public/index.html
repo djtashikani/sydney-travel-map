@@ -1003,9 +1003,12 @@
 
         // 初期化
         document.addEventListener('DOMContentLoaded', function() {
-            loadFromUrl();
+            const loadedFromUrl = loadFromUrl();
             initMap();
-            loadFromLocalStorage();
+            // URLからデータを読み込んだ場合はlocalStorageをスキップ
+            if (!loadedFromUrl) {
+                loadFromLocalStorage();
+            }
             renderSpotList();
             renderSavedSpots();
             renderHiddenSpots();
@@ -1016,6 +1019,9 @@
         // URLパラメータから読み込み
         function loadFromUrl() {
             const params = new URLSearchParams(window.location.search);
+
+            // URLパラメータがない場合は何もしない
+            if (!params.toString()) return false;
 
             // 都市
             const city = params.get('city');
@@ -1038,6 +1044,18 @@
                 } catch (e) {}
             }
 
+            // 非表示の観光地
+            const hidden = params.get('hidden');
+            if (hidden) {
+                hidden.split(',').forEach(id => hiddenSpots.add(parseInt(id)));
+            }
+
+            // 並べ替え順序
+            const order = params.get('order');
+            if (order) {
+                spotOrder = order.split(',').map(id => parseInt(id));
+            }
+
             // 出発地
             const start = params.get('start');
             if (start) {
@@ -1053,6 +1071,7 @@
             }
 
             updateLocationDisplay();
+            return true; // URLからデータを読み込んだ
         }
 
         // 都市切り替え
@@ -1757,8 +1776,6 @@
         }
 
         function loadFromLocalStorage() {
-            if (window.location.search && !window.location.search.includes('city=')) return;
-
             const saved = localStorage.getItem(getStorageKey());
             if (saved) {
                 const data = JSON.parse(saved);
@@ -1800,20 +1817,34 @@
             // 都市
             params.set('city', currentCity);
 
+            // 選択されたデフォルト観光地
             const defaultSpots = getCurrentSpots();
             const defaultSpotIds = Array.from(selectedSpots).filter(id => defaultSpots.some(s => s.id === id));
             if (defaultSpotIds.length > 0) {
                 params.set('spots', defaultSpotIds.join(','));
             }
 
+            // カスタムスポット
             if (customSpots.length > 0) {
                 params.set('custom', encodeURIComponent(JSON.stringify(customSpots)));
             }
 
+            // 非表示の観光地
+            if (hiddenSpots.size > 0) {
+                params.set('hidden', Array.from(hiddenSpots).join(','));
+            }
+
+            // 並べ替え順序（デフォルトと異なる場合のみ）
+            if (spotOrder.length > 0) {
+                params.set('order', spotOrder.join(','));
+            }
+
+            // 出発地
             if (startLocation) {
                 params.set('start', `${encodeURIComponent(startLocation.name)}|${startLocation.lat}|${startLocation.lng}`);
             }
 
+            // 目的地
             if (endLocation) {
                 params.set('end', `${encodeURIComponent(endLocation.name)}|${endLocation.lat}|${endLocation.lng}`);
             }
