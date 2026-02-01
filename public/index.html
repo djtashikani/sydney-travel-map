@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>シドニー観光マップ</title>
+    <title>オーストラリア観光マップ</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -19,18 +19,67 @@
             min-height: 100vh;
         }
 
+        /* 都市切り替えタブ */
+        .city-tabs {
+            display: flex;
+            background: #1a1a2e;
+        }
+
+        .city-tab {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .city-tab.sydney {
+            background: linear-gradient(135deg, #0077b6 0%, #00b4d8 100%);
+            color: white;
+            opacity: 0.6;
+        }
+
+        .city-tab.sydney.active {
+            opacity: 1;
+        }
+
+        .city-tab.melbourne {
+            background: linear-gradient(135deg, #7b2cbf 0%, #c77dff 100%);
+            color: white;
+            opacity: 0.6;
+        }
+
+        .city-tab.melbourne.active {
+            opacity: 1;
+        }
+
+        .city-tab:hover {
+            opacity: 0.9;
+        }
+
         .header {
             background: linear-gradient(135deg, #0077b6 0%, #00b4d8 100%);
             color: white;
-            padding: 15px 20px;
+            padding: 12px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: background 0.3s;
+        }
+
+        .header.melbourne {
+            background: linear-gradient(135deg, #7b2cbf 0%, #c77dff 100%);
         }
 
         .header h1 {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -58,7 +107,7 @@
 
         .main-container {
             display: flex;
-            height: calc(100vh - 60px);
+            height: calc(100vh - 110px);
         }
 
         .sidebar {
@@ -153,6 +202,10 @@
             transition: all 0.3s;
         }
 
+        .route-search-btn.melbourne {
+            background: linear-gradient(135deg, #7b2cbf 0%, #c77dff 100%);
+        }
+
         .route-search-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(0,119,182,0.3);
@@ -195,6 +248,8 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
         }
 
         .spot-item {
@@ -419,7 +474,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
 
-        /* 共有モーダル */
         .share-overlay {
             position: fixed;
             top: 0;
@@ -538,6 +592,11 @@
 
             .header h1 {
                 font-size: 1.1rem;
+            }
+
+            .city-tab {
+                font-size: 0.9rem;
+                padding: 12px 10px;
             }
         }
 
@@ -664,8 +723,18 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🦘 シドニー観光マップ</h1>
+    <!-- 都市切り替えタブ -->
+    <div class="city-tabs">
+        <button class="city-tab sydney active" onclick="switchCity('sydney')">
+            🦘 シドニー
+        </button>
+        <button class="city-tab melbourne" onclick="switchCity('melbourne')">
+            🎨 メルボルン
+        </button>
+    </div>
+
+    <div class="header" id="header">
+        <h1 id="headerTitle">🦘 シドニー観光マップ</h1>
         <div class="header-buttons">
             <button class="header-btn" onclick="shareUrl()">🔗 共有</button>
             <button class="header-btn" onclick="clearAllData()">🗑️ リセット</button>
@@ -745,7 +814,6 @@
         </div>
     </div>
 
-    <!-- 共有モーダル -->
     <div class="share-overlay" id="shareOverlay">
         <div class="share-container">
             <h3>🔗 マップを共有</h3>
@@ -785,7 +853,45 @@
             { id: 15, name: "ブルーマウンテンズ", nameEn: "Blue Mountains", category: "nature", icon: "⛰️", lat: -33.7182, lng: 150.3119, description: "世界遺産の山岳地帯" }
         ];
 
+        // メルボルンの主要観光地データ
+        const melbourneSpots = [
+            { id: 101, name: "フェデレーションスクエア", nameEn: "Federation Square", category: "landmark", icon: "🏛️", lat: -37.8180, lng: 144.9691, description: "市の中心広場" },
+            { id: 102, name: "フリンダースストリート駅", nameEn: "Flinders Street Station", category: "landmark", icon: "🚉", lat: -37.8183, lng: 144.9671, description: "象徴的な駅舎" },
+            { id: 103, name: "クイーンビクトリアマーケット", nameEn: "Queen Victoria Market", category: "food", icon: "🛒", lat: -37.8076, lng: 144.9568, description: "南半球最大の市場" },
+            { id: 104, name: "メルボルン王立植物園", nameEn: "Royal Botanic Gardens", category: "nature", icon: "🌿", lat: -37.8304, lng: 144.9796, description: "美しい庭園" },
+            { id: 105, name: "セントキルダビーチ", nameEn: "St Kilda Beach", category: "nature", icon: "🏖️", lat: -37.8679, lng: 144.9739, description: "ペンギンも見られるビーチ" },
+            { id: 106, name: "ビクトリア州立図書館", nameEn: "State Library Victoria", category: "culture", icon: "📚", lat: -37.8098, lng: 144.9652, description: "美しいドーム型閲覧室" },
+            { id: 107, name: "メルボルン博物館", nameEn: "Melbourne Museum", category: "culture", icon: "🏛️", lat: -37.8033, lng: 144.9717, description: "南半球最大の博物館" },
+            { id: 108, name: "ホイジャーレーン", nameEn: "Hosier Lane", category: "culture", icon: "🎨", lat: -37.8165, lng: 144.9690, description: "ストリートアートの聖地" },
+            { id: 109, name: "ユーレカタワー", nameEn: "Eureka Tower", category: "landmark", icon: "🗼", lat: -37.8215, lng: 144.9646, description: "88階の展望台" },
+            { id: 110, name: "メルボルン動物園", nameEn: "Melbourne Zoo", category: "nature", icon: "🦁", lat: -37.7847, lng: 144.9516, description: "世界最古の動物園の一つ" },
+            { id: 111, name: "ブライトンビーチ", nameEn: "Brighton Beach", category: "nature", icon: "🏠", lat: -37.9178, lng: 144.9873, description: "カラフルなビーチハウス" },
+            { id: 112, name: "グレートオーシャンロード", nameEn: "Great Ocean Road", category: "nature", icon: "🌊", lat: -38.6629, lng: 143.1050, description: "12使徒岩の絶景" },
+            { id: 113, name: "サウスメルボルンマーケット", nameEn: "South Melbourne Market", category: "food", icon: "🥐", lat: -37.8326, lng: 144.9565, description: "地元で人気のマーケット" },
+            { id: 114, name: "チャイナタウン", nameEn: "Chinatown", category: "food", icon: "🥡", lat: -37.8118, lng: 144.9685, description: "アジア料理の宝庫" },
+            { id: 115, name: "メルボルンクリケットグラウンド", nameEn: "MCG", category: "culture", icon: "🏟️", lat: -37.8200, lng: 144.9834, description: "スポーツの聖地" }
+        ];
+
+        // 都市設定
+        const cityConfig = {
+            sydney: {
+                name: 'シドニー',
+                emoji: '🦘',
+                center: [-33.8688, 151.2093],
+                spots: sydneySpots,
+                color: '#0077b6'
+            },
+            melbourne: {
+                name: 'メルボルン',
+                emoji: '🎨',
+                center: [-37.8136, 144.9631],
+                spots: melbourneSpots,
+                color: '#7b2cbf'
+            }
+        };
+
         // 状態管理
+        let currentCity = 'sydney';
         let map;
         let markers = {};
         let startLocation = null;
@@ -799,17 +905,24 @@
 
         // 初期化
         document.addEventListener('DOMContentLoaded', function() {
-            initMap();
             loadFromUrl();
+            initMap();
             loadFromLocalStorage();
             renderSpotList();
             renderSavedSpots();
             updateMarkers();
+            updateCityUI();
         });
 
         // URLパラメータから読み込み
         function loadFromUrl() {
             const params = new URLSearchParams(window.location.search);
+
+            // 都市
+            const city = params.get('city');
+            if (city && cityConfig[city]) {
+                currentCity = city;
+            }
 
             // 選択されたスポット
             const spots = params.get('spots');
@@ -843,9 +956,67 @@
             updateLocationDisplay();
         }
 
+        // 都市切り替え
+        function switchCity(city) {
+            if (currentCity === city) return;
+
+            // 現在のデータを保存
+            saveToLocalStorage();
+
+            // 都市を切り替え
+            currentCity = city;
+
+            // データをリセット
+            selectedSpots.clear();
+            customSpots = [];
+            startLocation = null;
+            endLocation = null;
+            if (routeLine) {
+                map.removeLayer(routeLine);
+                routeLine = null;
+            }
+
+            // 新しい都市のデータを読み込み
+            loadFromLocalStorage();
+
+            // UI更新
+            updateCityUI();
+            renderSpotList();
+            renderSavedSpots();
+            updateLocationDisplay();
+            updateMarkers();
+            closeRouteInfo();
+
+            // マップを移動
+            const config = cityConfig[currentCity];
+            map.setView(config.center, 13);
+        }
+
+        // 都市UIを更新
+        function updateCityUI() {
+            const config = cityConfig[currentCity];
+
+            // タブ
+            document.querySelectorAll('.city-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`.city-tab.${currentCity}`).classList.add('active');
+
+            // ヘッダー
+            const header = document.getElementById('header');
+            const headerTitle = document.getElementById('headerTitle');
+            header.className = `header ${currentCity === 'melbourne' ? 'melbourne' : ''}`;
+            headerTitle.textContent = `${config.emoji} ${config.name}観光マップ`;
+
+            // 検索ボタン
+            const searchBtn = document.getElementById('searchRouteBtn');
+            searchBtn.className = `route-search-btn ${currentCity === 'melbourne' ? 'melbourne' : ''}`;
+        }
+
         // マップ初期化
         function initMap() {
-            map = L.map('map').setView([-33.8688, 151.2093], 13);
+            const config = cityConfig[currentCity];
+            map = L.map('map').setView(config.center, 13);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
@@ -877,9 +1048,14 @@
             });
         }
 
+        function getCurrentSpots() {
+            return cityConfig[currentCity].spots;
+        }
+
         function renderSpotList() {
             const container = document.getElementById('spotList');
-            const allSpots = [...sydneySpots, ...customSpots];
+            const defaultSpots = getCurrentSpots();
+            const allSpots = [...defaultSpots, ...customSpots];
             const filteredSpots = currentCategory === 'all'
                 ? allSpots
                 : allSpots.filter(s => s.category === currentCategory || (currentCategory === 'custom' && s.category === 'custom'));
@@ -912,19 +1088,12 @@
             saveToLocalStorage();
         }
 
-        // 地点を削除
         function deleteSpot(id) {
             if (!confirm('この地点を削除しますか？')) return;
 
-            // カスタムスポットから削除
+            const deletedSpot = customSpots.find(s => s.id === id);
             customSpots = customSpots.filter(s => s.id !== id);
-
-            // 選択リストからも削除
             selectedSpots.delete(id);
-
-            // 出発地・目的地の確認
-            const allSpots = [...sydneySpots, ...customSpots];
-            const deletedSpot = allSpots.find(s => s.id === id);
 
             if (startLocation && deletedSpot && startLocation.lat === deletedSpot.lat && startLocation.lng === deletedSpot.lng) {
                 startLocation = null;
@@ -941,7 +1110,8 @@
         }
 
         function setAsStart(id) {
-            const allSpots = [...sydneySpots, ...customSpots];
+            const defaultSpots = getCurrentSpots();
+            const allSpots = [...defaultSpots, ...customSpots];
             const spot = allSpots.find(s => s.id === id);
             if (spot) {
                 startLocation = { name: spot.name, lat: spot.lat, lng: spot.lng };
@@ -952,7 +1122,8 @@
         }
 
         function setAsEnd(id) {
-            const allSpots = [...sydneySpots, ...customSpots];
+            const defaultSpots = getCurrentSpots();
+            const allSpots = [...defaultSpots, ...customSpots];
             const spot = allSpots.find(s => s.id === id);
             if (spot) {
                 endLocation = { name: spot.name, lat: spot.lat, lng: spot.lng };
@@ -1010,12 +1181,14 @@
                 }
             });
 
-            const allSpots = [...sydneySpots, ...customSpots];
+            const defaultSpots = getCurrentSpots();
+            const allSpots = [...defaultSpots, ...customSpots];
+            const config = cityConfig[currentCity];
 
             selectedSpots.forEach(id => {
                 const spot = allSpots.find(s => s.id === id);
                 if (spot) {
-                    let color = '#0077b6';
+                    let color = config.color;
                     let emoji = spot.icon;
 
                     if (startLocation && startLocation.lat === spot.lat && startLocation.lng === spot.lng) {
@@ -1044,7 +1217,7 @@
                     [startLocation.lat, startLocation.lng],
                     [endLocation.lat, endLocation.lng]
                 ], {
-                    color: '#0077b6',
+                    color: config.color,
                     weight: 3,
                     opacity: 0.7,
                     dashArray: '10, 10'
@@ -1223,6 +1396,10 @@
             `).join('');
         }
 
+        function getStorageKey() {
+            return `australiaTravelMap_${currentCity}`;
+        }
+
         function saveToLocalStorage() {
             const data = {
                 selectedSpots: Array.from(selectedSpots),
@@ -1230,14 +1407,13 @@
                 startLocation: startLocation,
                 endLocation: endLocation
             };
-            localStorage.setItem('sydneyTravelMap', JSON.stringify(data));
+            localStorage.setItem(getStorageKey(), JSON.stringify(data));
         }
 
         function loadFromLocalStorage() {
-            // URLパラメータがある場合はそちらを優先
-            if (window.location.search) return;
+            if (window.location.search && !window.location.search.includes('city=')) return;
 
-            const saved = localStorage.getItem('sydneyTravelMap');
+            const saved = localStorage.getItem(getStorageKey());
             if (saved) {
                 const data = JSON.parse(saved);
                 selectedSpots = new Set(data.selectedSpots || []);
@@ -1250,7 +1426,7 @@
 
         function clearAllData() {
             if (confirm('すべてのデータをリセットしますか？')) {
-                localStorage.removeItem('sydneyTravelMap');
+                localStorage.removeItem(getStorageKey());
                 selectedSpots.clear();
                 customSpots = [];
                 startLocation = null;
@@ -1259,7 +1435,6 @@
                     map.removeLayer(routeLine);
                     routeLine = null;
                 }
-                // URLパラメータもクリア
                 window.history.replaceState({}, '', window.location.pathname);
                 updateLocationDisplay();
                 renderSpotList();
@@ -1269,27 +1444,26 @@
             }
         }
 
-        // 共有URL生成
         function generateShareUrl() {
             const params = new URLSearchParams();
 
-            // 選択されたスポット（デフォルトのもののみ）
-            const defaultSpotIds = Array.from(selectedSpots).filter(id => sydneySpots.some(s => s.id === id));
+            // 都市
+            params.set('city', currentCity);
+
+            const defaultSpots = getCurrentSpots();
+            const defaultSpotIds = Array.from(selectedSpots).filter(id => defaultSpots.some(s => s.id === id));
             if (defaultSpotIds.length > 0) {
                 params.set('spots', defaultSpotIds.join(','));
             }
 
-            // カスタムスポット
             if (customSpots.length > 0) {
                 params.set('custom', encodeURIComponent(JSON.stringify(customSpots)));
             }
 
-            // 出発地
             if (startLocation) {
                 params.set('start', `${encodeURIComponent(startLocation.name)}|${startLocation.lat}|${startLocation.lng}`);
             }
 
-            // 目的地
             if (endLocation) {
                 params.set('end', `${encodeURIComponent(endLocation.name)}|${endLocation.lat}|${endLocation.lng}`);
             }
@@ -1298,19 +1472,18 @@
             return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
         }
 
-        // 共有モーダルを開く
         function shareUrl() {
             const shareUrl = generateShareUrl();
             document.getElementById('shareUrlInput').value = shareUrl;
 
-            const text = `シドニー観光マップ`;
+            const config = cityConfig[currentCity];
+            const text = `${config.name}観光マップ`;
             document.getElementById('lineShareBtn').href = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
             document.getElementById('twitterShareBtn').href = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
 
             document.getElementById('shareOverlay').classList.add('visible');
         }
 
-        // URLをコピー
         function copyShareUrl() {
             const input = document.getElementById('shareUrlInput');
             input.select();
@@ -1318,7 +1491,6 @@
             alert('URLをコピーしました！');
         }
 
-        // 共有モーダルを閉じる
         function closeShareModal() {
             document.getElementById('shareOverlay').classList.remove('visible');
         }
