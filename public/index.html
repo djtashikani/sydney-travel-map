@@ -661,6 +661,21 @@
             background: #fecaca;
         }
 
+        .restore-btn {
+            background: #dbeafe;
+            color: #2563eb;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .restore-btn:hover {
+            background: #bfdbfe;
+        }
+
         .tab-container {
             display: flex;
             border-bottom: 2px solid #e0e0e0;
@@ -796,7 +811,10 @@
             </div>
 
             <div class="sidebar-section tab-content" id="tab-saved">
+                <h4 style="font-size: 0.9rem; color: #333; margin-bottom: 10px;">📌 カスタム追加した地点</h4>
                 <div class="saved-spots-list" id="savedSpotsList"></div>
+                <h4 style="font-size: 0.9rem; color: #666; margin: 15px 0 10px 0;">🗑️ 削除した観光地（タップで復元）</h4>
+                <div class="saved-spots-list" id="hiddenSpotsList"></div>
             </div>
         </div>
 
@@ -898,6 +916,7 @@
         let endLocation = null;
         let selectedSpots = new Set();
         let customSpots = [];
+        let hiddenSpots = new Set(); // 削除（非表示）にした観光地ID
         let currentCategory = 'all';
         let routeMode = 'transit';
         let routeLine = null;
@@ -910,6 +929,7 @@
             loadFromLocalStorage();
             renderSpotList();
             renderSavedSpots();
+            renderHiddenSpots();
             updateMarkers();
             updateCityUI();
         });
@@ -969,6 +989,7 @@
             // データをリセット
             selectedSpots.clear();
             customSpots = [];
+            hiddenSpots.clear();
             startLocation = null;
             endLocation = null;
             if (routeLine) {
@@ -983,6 +1004,7 @@
             updateCityUI();
             renderSpotList();
             renderSavedSpots();
+            renderHiddenSpots();
             updateLocationDisplay();
             updateMarkers();
             closeRouteInfo();
@@ -1049,7 +1071,8 @@
         }
 
         function getCurrentSpots() {
-            return cityConfig[currentCity].spots;
+            // 非表示にした観光地を除外して返す
+            return cityConfig[currentCity].spots.filter(s => !hiddenSpots.has(s.id));
         }
 
         function renderSpotList() {
@@ -1071,7 +1094,7 @@
                     <div class="spot-actions">
                         <button class="spot-action-btn start" onclick="event.stopPropagation(); setAsStart(${spot.id})" title="出発地に設定">S</button>
                         <button class="spot-action-btn end" onclick="event.stopPropagation(); setAsEnd(${spot.id})" title="目的地に設定">E</button>
-                        ${spot.category === 'custom' ? `<button class="spot-action-btn delete" onclick="event.stopPropagation(); deleteSpot(${spot.id})" title="削除">✕</button>` : ''}
+                        <button class="spot-action-btn delete" onclick="event.stopPropagation(); deleteSpot(${spot.id}, ${spot.category === 'custom'})" title="削除">✕</button>
                     </div>
                 </div>
             `).join('');
@@ -1088,11 +1111,21 @@
             saveToLocalStorage();
         }
 
-        function deleteSpot(id) {
+        function deleteSpot(id, isCustom) {
             if (!confirm('この地点を削除しますか？')) return;
 
-            const deletedSpot = customSpots.find(s => s.id === id);
-            customSpots = customSpots.filter(s => s.id !== id);
+            let deletedSpot;
+
+            if (isCustom) {
+                // カスタムスポットの場合は完全削除
+                deletedSpot = customSpots.find(s => s.id === id);
+                customSpots = customSpots.filter(s => s.id !== id);
+            } else {
+                // デフォルト観光地の場合は非表示リストに追加
+                deletedSpot = cityConfig[currentCity].spots.find(s => s.id === id);
+                hiddenSpots.add(id);
+            }
+
             selectedSpots.delete(id);
 
             if (startLocation && deletedSpot && startLocation.lat === deletedSpot.lat && startLocation.lng === deletedSpot.lng) {
@@ -1105,8 +1138,42 @@
             updateLocationDisplay();
             renderSpotList();
             renderSavedSpots();
+            renderHiddenSpots();
             updateMarkers();
             saveToLocalStorage();
+        }
+
+        // 非表示の観光地を復元
+        function restoreSpot(id) {
+            hiddenSpots.delete(id);
+            renderSpotList();
+            renderHiddenSpots();
+            saveToLocalStorage();
+        }
+
+        // 非表示の観光地リストを表示
+        function renderHiddenSpots() {
+            const container = document.getElementById('hiddenSpotsList');
+            if (!container) return;
+
+            const hiddenList = cityConfig[currentCity].spots.filter(s => hiddenSpots.has(s.id));
+
+            if (hiddenList.length === 0) {
+                container.innerHTML = '<p class="empty-message">削除した観光地はありません</p>';
+                return;
+            }
+
+            container.innerHTML = hiddenList.map(spot => `
+                <div class="saved-spot-item">
+                    <div class="saved-spot-info">
+                        <span>${spot.icon}</span>
+                        <span>${spot.name}</span>
+                    </div>
+                    <div class="saved-spot-actions">
+                        <button class="restore-btn" onclick="restoreSpot(${spot.id})">復元</button>
+                    </div>
+                </div>
+            `).join('');
         }
 
         function setAsStart(id) {
@@ -1404,6 +1471,7 @@
             const data = {
                 selectedSpots: Array.from(selectedSpots),
                 customSpots: customSpots,
+                hiddenSpots: Array.from(hiddenSpots),
                 startLocation: startLocation,
                 endLocation: endLocation
             };
@@ -1418,6 +1486,7 @@
                 const data = JSON.parse(saved);
                 selectedSpots = new Set(data.selectedSpots || []);
                 customSpots = data.customSpots || [];
+                hiddenSpots = new Set(data.hiddenSpots || []);
                 startLocation = data.startLocation || null;
                 endLocation = data.endLocation || null;
                 updateLocationDisplay();
@@ -1429,6 +1498,7 @@
                 localStorage.removeItem(getStorageKey());
                 selectedSpots.clear();
                 customSpots = [];
+                hiddenSpots.clear();
                 startLocation = null;
                 endLocation = null;
                 if (routeLine) {
@@ -1439,6 +1509,7 @@
                 updateLocationDisplay();
                 renderSpotList();
                 renderSavedSpots();
+                renderHiddenSpots();
                 updateMarkers();
                 closeRouteInfo();
             }
