@@ -1,14 +1,18 @@
 {
   "name": "sydney-travel-map",
   "version": "1.0.0",
-  "description": "Sydney Travel Map - Tourist Guide",
+  "description": "Sydney/Melbourne Travel Map - Tourist Guide",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:sqlite": "node server-sqlite.js",
     "dev": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^9.4.3"
   },
   "engines": {
     "node": ">=18.0.0"
