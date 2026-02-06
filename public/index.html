@@ -557,10 +557,22 @@
                 width: 100%;
                 height: auto;
                 max-height: 50vh;
+                flex: 1;
+                transition: max-height 0.3s ease, flex 0.3s ease;
+            }
+
+            .sidebar.expanded {
+                max-height: calc(100vh - 160px);
+                flex: 1;
             }
 
             .map-container {
                 height: 50vh;
+                flex: none;
+            }
+
+            .map-container.minimized {
+                height: 0;
             }
 
             .header h1 {
@@ -2428,15 +2440,18 @@
             const mapContainer = document.getElementById('mapContainer');
             const restoreBar = document.getElementById('mapRestoreBar');
             const toggleBtn = document.getElementById('mapToggleBtn');
+            const sidebar = document.querySelector('.sidebar');
 
             isMapMinimized = !isMapMinimized;
 
             if (isMapMinimized) {
                 mapContainer.classList.add('minimized');
                 restoreBar.classList.add('visible');
+                sidebar.classList.add('expanded');
             } else {
                 mapContainer.classList.remove('minimized');
                 restoreBar.classList.remove('visible');
+                sidebar.classList.remove('expanded');
                 // 地図のサイズを再計算
                 setTimeout(() => {
                     if (map) map.invalidateSize();
