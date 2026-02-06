@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>オーストラリア観光マップ</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -11,6 +11,11 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
         }
 
         body {
@@ -549,25 +554,33 @@
         }
 
         @media (max-width: 768px) {
+            body {
+                overflow-x: hidden;
+            }
+
             .main-container {
                 flex-direction: column;
+                max-width: 100vw;
+                overflow-x: hidden;
             }
 
             .sidebar {
                 width: 100%;
+                max-width: 100vw;
                 height: auto;
-                max-height: 50vh;
+                max-height: 45vh;
                 flex: 1;
                 transition: max-height 0.3s ease, flex 0.3s ease;
+                overflow-x: hidden;
             }
 
             .sidebar.expanded {
-                max-height: calc(100vh - 90px);
+                max-height: calc(100vh - 80px);
                 flex: 1;
             }
 
             .map-container {
-                height: 50vh;
+                height: 55vh;
                 flex: none;
             }
 
@@ -576,101 +589,112 @@
             }
 
             .header {
-                padding: 6px 10px;
+                padding: 5px 10px;
             }
 
             .header h1 {
-                font-size: 0.9rem;
+                font-size: 0.85rem;
             }
 
             .header-btn {
+                padding: 4px 8px;
+                font-size: 0.7rem;
+            }
+
+            .city-tab {
+                font-size: 0.75rem;
+                padding: 6px 5px;
+                gap: 4px;
+            }
+
+            .sidebar-section {
+                padding: 6px 8px;
+                border-bottom-width: 1px;
+            }
+
+            .sidebar-section h3 {
+                font-size: 0.8rem;
+                margin-bottom: 5px;
+            }
+
+            .route-search-btn {
+                padding: 6px;
+                font-size: 0.8rem;
+            }
+
+            .transport-options {
+                gap: 3px;
+            }
+
+            .transport-btn {
+                padding: 5px 8px;
+                font-size: 0.7rem;
+            }
+
+            .tab-btn {
                 padding: 5px 8px;
                 font-size: 0.75rem;
             }
 
-            .city-tab {
-                font-size: 0.8rem;
-                padding: 8px 6px;
-                gap: 5px;
-            }
-
-            .sidebar-section {
-                padding: 8px;
-            }
-
-            .sidebar-section h3 {
-                font-size: 0.85rem;
-                margin-bottom: 6px;
-            }
-
-            .route-search-btn {
-                padding: 8px;
-                font-size: 0.85rem;
-            }
-
-            .transport-options {
-                gap: 4px;
-            }
-
-            .transport-btn {
-                padding: 6px 10px;
-                font-size: 0.75rem;
-            }
-
-            .tab-btn {
-                padding: 6px 10px;
-                font-size: 0.8rem;
-            }
-
             .spot-item {
-                padding: 8px;
+                padding: 6px;
             }
 
             .spot-name {
-                font-size: 0.85rem;
+                font-size: 0.8rem;
             }
 
             .spot-desc {
-                font-size: 0.7rem;
+                font-size: 0.65rem;
             }
 
             .search-box input {
-                padding: 8px;
-                font-size: 0.85rem;
+                padding: 6px;
+                font-size: 0.8rem;
             }
 
             .search-box button {
-                padding: 8px 12px;
-                font-size: 0.8rem;
-            }
-
-            .location-input-group {
-                gap: 6px;
-            }
-
-            .location-label {
-                width: 50px;
-                font-size: 0.8rem;
-            }
-
-            .location-display {
-                padding: 8px;
-                font-size: 0.8rem;
-                min-height: 36px;
-            }
-
-            .clear-btn {
                 padding: 6px 10px;
                 font-size: 0.75rem;
             }
 
+            .location-input-group {
+                gap: 5px;
+            }
+
+            .location-label {
+                width: 45px;
+                font-size: 0.75rem;
+            }
+
+            .location-display {
+                padding: 6px;
+                font-size: 0.75rem;
+                min-height: 32px;
+            }
+
+            .clear-btn {
+                padding: 5px 8px;
+                font-size: 0.7rem;
+            }
+
             .add-spot-btn {
-                padding: 10px;
-                font-size: 0.85rem;
+                padding: 8px;
+                font-size: 0.8rem;
             }
 
             .category-option {
-                padding: 6px 10px;
+                padding: 5px 8px;
+                font-size: 0.7rem;
+            }
+
+            .category-options {
+                gap: 5px;
+                margin-bottom: 8px;
+            }
+
+            .map-click-instruction {
+                padding: 8px;
                 font-size: 0.75rem;
             }
         }
