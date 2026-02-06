@@ -562,7 +562,7 @@
             }
 
             .sidebar.expanded {
-                max-height: calc(100vh - 160px);
+                max-height: calc(100vh - 120px);
                 flex: 1;
             }
 
@@ -575,13 +575,107 @@
                 height: 0;
             }
 
+            .header {
+                padding: 8px 12px;
+            }
+
             .header h1 {
-                font-size: 1.1rem;
+                font-size: 1rem;
+            }
+
+            .header-btn {
+                padding: 6px 10px;
+                font-size: 0.8rem;
             }
 
             .city-tab {
+                font-size: 0.85rem;
+                padding: 10px 8px;
+            }
+
+            .sidebar-section {
+                padding: 10px;
+            }
+
+            .sidebar-section h3 {
                 font-size: 0.9rem;
-                padding: 12px 10px;
+                margin-bottom: 8px;
+            }
+
+            .route-search-btn {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+
+            .transport-options {
+                gap: 5px;
+            }
+
+            .transport-btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+
+            .tab-btn {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
+
+            .spot-item {
+                padding: 10px;
+            }
+
+            .spot-name {
+                font-size: 0.9rem;
+            }
+
+            .spot-desc {
+                font-size: 0.75rem;
+            }
+
+            .search-box input {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+
+            .search-box button {
+                padding: 10px 15px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* iPhone 13 mini / SE など小さい画面用 */
+        @media (max-width: 390px) {
+            .header {
+                padding: 6px 10px;
+            }
+
+            .header h1 {
+                font-size: 0.9rem;
+            }
+
+            .header-btn {
+                padding: 5px 8px;
+                font-size: 0.75rem;
+            }
+
+            .city-tab {
+                font-size: 0.8rem;
+                padding: 8px 6px;
+                gap: 5px;
+            }
+
+            .sidebar-section {
+                padding: 8px;
+            }
+
+            .tab-btn {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+
+            .spot-list {
+                max-height: 400px;
             }
         }
 
@@ -2260,8 +2354,10 @@
                 isCustom: true // カスタム追加フラグ
             };
 
-            customSpots.push(newSpot);
+            customSpots.unshift(newSpot);  // 先頭に追加
             selectedSpots.add(newSpot.id);
+            // spotOrderの先頭に追加して、リストの一番上に表示
+            spotOrder.unshift(newSpot.id);
 
             // フォームをリセット
             document.getElementById('customSpotName').value = '';
