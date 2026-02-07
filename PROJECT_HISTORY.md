@@ -156,15 +156,94 @@ pm2 start sydney-travel-map
 
 | アプリ | URL | ポート | 管理方法 |
 |--------|-----|--------|----------|
-| video-splitter | https://video-chopper.tashikani.jp | 3001 | Docker |
 | sydney-travel-app | https://map.tashikani.jp | 3000 | PM2 |
+| video-splitter | https://video-chopper.tashikani.jp | 3001 | Docker |
 | mind-circuit | https://basic.mind-circuit.jp | 3002 | PM2 |
+| travel-map | https://travel.tashikani.jp | 3003 | PM2 |
 
 **注意事項**:
-- 新しいアプリを追加する際は、既存のポート（3000, 3001, 3002）と競合しないポートを使用すること
+- 新しいアプリを追加する際は、既存のポート（3000, 3001, 3002, 3003）と競合しないポートを使用すること
 - サーバー再起動時はPM2が自動的にアプリを起動する設定済み
 - SSH接続が不安定な場合はVultr APIでサーバーを再起動
 
 ---
 
-*最終更新: 2026-02-06*
+### 2026-02-06: Xserver VPSへの移行完了
+
+**背景**: VultrサーバーのSSH接続が不安定（短時間に複数接続するとIPがブロックされる問題）のため、Xserver VPSへ移行。
+
+**新サーバー情報**:
+| 項目 | 値 |
+|------|-----|
+| プロバイダ | Xserver VPS |
+| サーバー名 | tp-vps |
+| IPアドレス | 162.43.55.45 |
+| OS | Ubuntu 24.04 |
+| vCPU | 4コア |
+| メモリ | 6GB |
+
+**移行内容**:
+- tarballでソースコードを転送
+- npm install --production
+- PM2でプロセス起動
+- Nginx設定を新規作成
+- Let's Encrypt SSL証明書を取得（有効期限: 2026-05-07）
+
+**サーバー管理コマンド（新サーバー）**:
+```bash
+# SSH接続
+ssh -i "E:/Claude code/tp-vps/tp-vps.pem" root@162.43.55.45
+
+# PM2状態確認
+pm2 list
+
+# アプリ再起動
+pm2 restart sydney-travel-map
+
+# ログ確認
+pm2 logs sydney-travel-map --lines 50
+```
+
+---
+
+## 現在の本番環境サマリー（2026-02-06時点）
+
+| 項目 | 値 |
+|------|-----|
+| サーバー | Xserver VPS (162.43.55.45) |
+| OS | Ubuntu 24.04 |
+| vCPU | 4コア |
+| RAM | 6GB |
+| Node.js | v22.22.0 |
+| PM2 | v6.0.14 |
+| Nginx | 1.24.0 |
+| SSL | Let's Encrypt（有効期限: 2026-05-07） |
+
+**同居アプリケーション**:
+
+| アプリ | URL | ポート | 管理方法 |
+|--------|-----|--------|----------|
+| sydney-travel-app | https://map.tashikani.jp | 3000 | PM2 |
+| video-splitter | https://video-chopper.tashikani.jp | 3001 | Docker |
+| mind-circuit | https://basic.mind-circuit.jp | 3002 | PM2 |
+| travel-map | https://travel.tashikani.jp | 3003 | PM2 |
+
+---
+
+## 2026-02-07: better-sqlite3導入（データ永続化対応）
+
+### 概要
+インメモリ版（server.js）からSQLite版（server-sqlite.js）に切り替え。サーバー再起動してもデータが保持されるようになった。
+
+### 対応内容
+- travel-mapで導入済みのプリビルドバイナリ（v12.6.2, ABI v127, linux-x64）を流用
+- `ecosystem.config.js`: `server.js` → `server-sqlite.js` に変更
+- PM2再起動・pm2 save実施
+
+### 動作確認
+- ✅ `https://map.tashikani.jp` → HTTP 200
+- ✅ `/api/admin/stats` → `{"userCount":0}`
+
+---
+
+*最終更新: 2026-02-07*
