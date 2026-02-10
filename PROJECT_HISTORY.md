@@ -15,14 +15,14 @@
 - **観光スポット表示**: 各都市の観光スポットをリスト・マップ上に表示
 - **経路検索**: 出発地・目的地を設定してGoogle Mapsで経路検索（公共交通/徒歩/車）
 - **カスタムスポット追加**: 検索またはマップクリックでオリジナルの地点を追加
-- **カテゴリ選択**: 名所/自然/文化/グルメの4カテゴリ
+- **カテゴリ選択**: 名所/グルメ + 人物タブ（泰/美/天）
 - **日本語検索対応**: カタカナで検索可能（例：Wホテル → W Hotel）
 - **共有機能**: LINE共有、URL共有
 - **データ保存**: ローカルストレージに保存、URLパラメータで共有可能
 
 ### UI/UX機能
 - **地図の最小化/復元**: スマホで地図を最小化してリスト表示領域を拡大
-- **確認ダイアログ**: 「最新情報に更新」ボタン押下時に確認アラート表示
+- **ワンタップ更新**: 🔄ボタンで即座にクラウドから最新データを取得
 - **スマホ最適化**: iPhone 13 mini等の小さい画面に対応したレスポンシブデザイン
 - **ドラッグ並べ替え**: 観光地リストの順序をドラッグで変更可能
 
@@ -73,106 +73,9 @@
 
 ---
 
-### 2026-02-06: Vultr統合デプロイ - 3プロジェクト完全共存構成
-
-**背景**: video-splitter、sydney-travel-app、mind-circuitの3つのプロジェクトをVultrサーバー上で同時稼働させる統合設定を実施。
-
-**統合アーキテクチャ**:
-```
-Internet
-  │
-  ├── video-chopper.tashikani.jp → Nginx(443/SSL) → Docker:3001
-  ├── map.tashikani.jp           → Nginx(443/SSL) → PM2:3000
-  └── basic.mind-circuit.jp      → Nginx(443/SSL) → PM2:3002
-```
-
----
-
-## デプロイ手順
-
-### 通常のデプロイ（GitHub経由）
-```bash
-# ローカルで変更をコミット・プッシュ
-cd "E:\Claude code\sydney-travel-app"
-git add .
-git commit -m "変更内容"
-git push origin main
-
-# サーバーでプル・再起動
-ssh -i ~/.ssh/id_ed25519 root@198.13.36.101
-cd /var/www/sydney-travel-map
-git pull origin main
-pm2 restart sydney-travel-map
-```
-
-### SSH接続が不安定な場合
-```bash
-# Vultr APIでサーバー再起動
-curl -s -X POST "https://api.vultr.com/v2/instances/c3cc151e-74b7-44e1-aaad-c05d34beb9d0/reboot" \
-  -H "Authorization: Bearer YOUR_API_KEY"
-
-# 45秒待ってから再接続
-sleep 45
-ssh -i ~/.ssh/id_ed25519 root@198.13.36.101
-```
-
----
-
-## サーバー管理コマンド
-
-```bash
-# SSH接続
-ssh -i ~/.ssh/id_ed25519 root@198.13.36.101
-
-# PM2状態確認
-pm2 list
-
-# アプリ再起動
-pm2 restart sydney-travel-map
-
-# ログ確認
-pm2 logs sydney-travel-map --lines 50
-
-# アプリ停止/起動
-pm2 stop sydney-travel-map
-pm2 start sydney-travel-map
-```
-
----
-
-## 現在の本番環境サマリー（2026-02-06時点）
-
-| 項目 | 値 |
-|------|-----|
-| サーバー | Vultr VPS (198.13.36.101) |
-| OS | Ubuntu 24.04.3 LTS |
-| RAM | 4GB |
-| Node.js | v22.22.0 |
-| PM2 | v6.0.14 |
-| Nginx | 1.24.0 |
-| SSL | Let's Encrypt（有効期限: 2026-05-06） |
-
-**同居アプリケーション**:
-
-| アプリ | URL | ポート | 管理方法 |
-|--------|-----|--------|----------|
-| sydney-travel-app | https://map.tashikani.jp | 3000 | PM2 |
-| video-splitter | https://video-chopper.tashikani.jp | 3001 | Docker |
-| mind-circuit | https://basic.mind-circuit.jp | 3002 | PM2 |
-| travel-map | https://travel.tashikani.jp | 3003 | PM2 |
-
-**注意事項**:
-- 新しいアプリを追加する際は、既存のポート（3000, 3001, 3002, 3003）と競合しないポートを使用すること
-- サーバー再起動時はPM2が自動的にアプリを起動する設定済み
-- SSH接続が不安定な場合はVultr APIでサーバーを再起動
-
----
-
 ### 2026-02-06: Xserver VPSへの移行完了
 
-**背景**: VultrサーバーのSSH接続が不安定（短時間に複数接続するとIPがブロックされる問題）のため、Xserver VPSへ移行。
-
-**新サーバー情報**:
+**サーバー情報**:
 | 項目 | 値 |
 |------|-----|
 | プロバイダ | Xserver VPS |
@@ -246,4 +149,124 @@ pm2 logs sydney-travel-map --lines 50
 
 ---
 
-*最終更新: 2026-02-07*
+## 2026-02-07: クラウド同期バグ修正・電話番号検索・ファビコン追加
+
+### クラウド同期バグ修正
+
+**問題**: PCでカスタム地点を追加しても、iPadで同じユーザーでログインした際にデータが反映されない。
+
+**原因**: Nginxログを分析した結果、PCから`POST /api/sync/fukaya`が**一度も送信されていなかった**ことが判明。
+- `loginUser()`でサーバーからデータを読み込み（`loadFromCloud()`）するが、サーバーにデータがない場合にローカルデータをアップロードする処理がなかった
+- PM2移行時にDBファイルが新規作成され、以前のデータが失われていた
+
+**修正内容**:
+1. `loadFromCloud()` - サーバーにデータがあったかどうかを`boolean`で返すように変更
+2. `loginUser()` - ログイン時にサーバーにデータがなく、ローカルにカスタム地点があれば自動アップロード
+3. `DOMContentLoaded` - ページ再読み込み時も同様にローカル→クラウドの自動アップロード
+
+### 電話番号検索機能
+
+**概要**: カスタム追加の検索欄で電話番号を入力すると、Google Places API (New) の Text Search で場所を検索できるように。
+
+**実装詳細**:
+- `isPhoneNumber()` - 数字・ハイフン・スペース・括弧・+のみで数字6桁以上なら電話番号と判定
+- `searchByPhone()` - 国際形式（`+61 X XXXX XXXX`）に変換してGoogle Places APIで検索
+- 通常のテキスト検索（Nominatim）はそのまま維持
+- 検索結果に📞電話番号を青色で表示
+
+**Google Places API設定**:
+- APIキー: Maps Platform API Key（video-splitterプロジェクト）
+- リファラ制限: `https://map.tashikani.jp/*` のみ許可
+- 有効API: Places API, Places API (New) 含む32個
+
+**対応する電話番号形式**:
+| 入力例 | 変換後 |
+|--------|--------|
+| `02 9360 9631` | `+61 2 9360 9631` |
+| `+61 2 9360 9631` | そのまま |
+| `0293609631` | `+61 293609631` |
+
+**注意**: Google Places APIはスペース付きの国際形式でないと正確にヒットしない。スペースを除去すると空結果になる。
+
+### ファビコン追加
+
+- コアラのSVGファビコンを作成・設置（`/public/favicon.svg`）
+- `<link rel="icon">` と `<link rel="apple-touch-icon">` をHTMLに追加
+
+### セキュリティ対応（VPSマルウェア除去）
+
+**発見**: Xserver VPSサポートから「外部への不審なアクセスを検知」との通知。セキュリティ監査を実施。
+
+**マルウェア発見箇所**（全て2026-02-06 20:14に設置）:
+| 場所 | 内容 | 対処 |
+|------|------|------|
+| root crontab | `* * * * * /tmp/x86_64.kok (deleted) startup` ×2 | `crontab -r` で削除 |
+| `/etc/cron.d/root` | `* * * * * /tmp/x86_64.kok (deleted) startup` | ファイル削除 |
+| `/etc/rc.local` | 30秒間隔の無限ループで`x86_64.kok`実行 | `#!/bin/bash\nexit 0` に修正 |
+
+**安全確認済み項目**:
+- マルウェア本体（`/tmp/x86_64.kok`）: 既に削除されていた
+- SSH: パスワード認証無効、公開鍵認証のみ
+- SSHログ: 不正ログインの形跡なし
+- 不審なプロセス/systemdサービス: なし
+- .bashrc/.profile: 正常
+
+**Xserverサポートへの返信**: マルウェア除去完了の報告と、ポート制限（20,21,22のみ）の解除を依頼。
+
+**未解決**: Xserverのポート制限が解除されるまで、video-chopperのGoogle OAuthとLet's Encrypt証明書更新が機能しない。
+
+---
+
+## 2026-02-07: 人物タブ追加・カテゴリ整理・UI改善
+
+### 人物タブ追加（泰・美・天）
+
+**概要**: 観光地タブに3つの人物タブ「泰」「美」「天」を新設。各人物ごとにおすすめの場所をカテゴリ分けして管理できるようにした。
+
+**実装内容**:
+- タブバーに「泰」「美」「天」の3タブを追加（合計6タブ: 観光地/カスタム追加/保存済み/泰/美/天）
+- 各タブに専用のスポット一覧表示エリア（`personSpotsList-tai/mi/ten`）
+- `renderPersonSpots()`関数を新設: カスタムスポットを`person-tai/mi/ten`カテゴリでフィルタして表示
+- カスタム追加フォームに「👤 泰」「👤 美」「👤 天」カテゴリ選択を追加
+- `switchTab()`を`data-tab`属性ベースに修正（`nth-child`ハードコードから脱却）
+- タブボタンのスタイルを6タブ対応に縮小（padding/font-size調整）
+
+### カテゴリ整理
+
+- **自然・文化カテゴリを名所に統合**: 全観光スポットの`category: "nature"`/`"culture"`を`"landmark"`に変更
+- カテゴリフィルタボタン: 「すべて」「🏛️ 名所」「🍽️ グルメ」の3つに簡素化
+- `categoryIcons`・`getCategoryIcon()`から`nature`/`culture`を削除、`person-*`を追加
+
+### UI改善
+
+- 更新ボタン（🔄）の確認アラートを削除 → ワンタップで即座に最新データを取得
+- `deleteSpot()`呼び出しに`isCustom: true`引数を追加（保存済みタブ・人物タブで正しく完全削除）
+
+---
+
+## 現在の本番環境サマリー（2026-02-07時点）
+
+| 項目 | 値 |
+|------|-----|
+| サーバー | Xserver VPS (162.43.55.45) |
+| OS | Ubuntu 24.04 |
+| vCPU | 4コア |
+| RAM | 6GB |
+| Node.js | v22.22.0 |
+| PM2 | v6.0.14 |
+| Nginx | 1.24.0 |
+| SSL | Let's Encrypt（有効期限: 2026-05-07） |
+| パケットフィルタ | ON（Xserver制限: ポート20,21,22のみ） |
+
+**同居アプリケーション（全てPM2管理）**:
+
+| アプリ | URL | ポート | 状態 |
+|--------|-----|--------|------|
+| sydney-travel-map | https://map.tashikani.jp | 3000 | 正常稼働 |
+| video-chopper | https://video-chopper.tashikani.jp | 3001 | 稼働（OAuth不可） |
+| mind-circuit | https://basic.mind-circuit.jp | 3002 | 正常稼働 |
+| travel-map | https://travel.tashikani.jp | 3003 | 正常稼働 |
+
+---
+
+*最終更新: 2026-02-07（人物タブ追加・カテゴリ整理）*
