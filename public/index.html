@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>オーストラリア観光マップ</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/favicon.svg">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -646,8 +648,8 @@
             }
 
             .tab-btn {
-                padding: 5px 8px;
-                font-size: 0.75rem;
+                padding: 5px 3px;
+                font-size: 0.7rem;
             }
 
             .spot-item {
@@ -739,8 +741,8 @@
             }
 
             .tab-btn {
-                padding: 6px 10px;
-                font-size: 0.8rem;
+                padding: 5px 2px;
+                font-size: 0.7rem;
             }
 
             .spot-list {
@@ -909,6 +911,12 @@
             text-overflow: ellipsis;
         }
 
+        .search-result-phone {
+            font-size: 0.75rem;
+            color: #2563eb;
+            margin-top: 2px;
+        }
+
         .divider {
             text-align: center;
             color: #999;
@@ -979,14 +987,15 @@
 
         .tab-btn {
             flex: 1;
-            padding: 12px;
+            padding: 10px 4px;
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             font-weight: bold;
             color: #666;
             transition: all 0.3s;
+            white-space: nowrap;
         }
 
         .tab-btn.active {
@@ -1199,8 +1208,6 @@
                 <span class="user-id" id="displayUserId">未ログイン</span>
             </div>
             <button class="header-btn" onclick="refreshData()" id="refreshBtn" title="最新情報に更新">🔄</button>
-            <button class="header-btn" onclick="shareUrl()">🔗 共有</button>
-            <button class="header-btn" onclick="clearAllData()">🗑️ リセット</button>
         </div>
     </div>
 
@@ -1244,17 +1251,18 @@
             </div>
 
             <div class="tab-container">
-                <button class="tab-btn active" onclick="switchTab('spots')">観光地</button>
-                <button class="tab-btn" onclick="switchTab('custom')">カスタム追加</button>
-                <button class="tab-btn" onclick="switchTab('saved')">保存済み</button>
+                <button class="tab-btn active" data-tab="spots" onclick="switchTab('spots')">観光地</button>
+                <button class="tab-btn" data-tab="custom" onclick="switchTab('custom')">カスタム追加</button>
+                <button class="tab-btn" data-tab="saved" onclick="switchTab('saved')">保存済み</button>
+                <button class="tab-btn" data-tab="person-tai" onclick="switchTab('person-tai')">泰</button>
+                <button class="tab-btn" data-tab="person-mi" onclick="switchTab('person-mi')">美</button>
+                <button class="tab-btn" data-tab="person-ten" onclick="switchTab('person-ten')">天</button>
             </div>
 
             <div class="sidebar-section tab-content active" id="tab-spots">
                 <div class="category-filter">
                     <button class="category-btn active" onclick="filterCategory('all')">すべて</button>
                     <button class="category-btn" onclick="filterCategory('landmark')">🏛️ 名所</button>
-                    <button class="category-btn" onclick="filterCategory('nature')">🌿 自然</button>
-                    <button class="category-btn" onclick="filterCategory('culture')">🎭 文化</button>
                     <button class="category-btn" onclick="filterCategory('food')">🍽️ グルメ</button>
                 </div>
                 <div class="spot-list" id="spotList"></div>
@@ -1263,7 +1271,7 @@
             <div class="sidebar-section tab-content" id="tab-custom">
                 <div class="custom-spot-form">
                     <div class="search-box">
-                        <input type="text" class="custom-spot-input" id="searchInput" placeholder="🔍 場所を検索（例: オペラハウス、Bondi Beach）">
+                        <input type="text" class="custom-spot-input" id="searchInput" placeholder="🔍 場所名・住所・電話番号で検索">
                         <button class="search-btn" onclick="searchLocation()">検索</button>
                     </div>
                     <div class="search-results" id="searchResults"></div>
@@ -1278,9 +1286,10 @@
                         <label style="font-size: 0.85rem; color: #666; margin-bottom: 5px; display: block;">カテゴリを選択:</label>
                         <div class="category-options" id="categoryOptions">
                             <button type="button" class="category-option" data-category="landmark" onclick="selectCategory('landmark')">🏛️ 名所</button>
-                            <button type="button" class="category-option" data-category="nature" onclick="selectCategory('nature')">🌿 自然</button>
-                            <button type="button" class="category-option" data-category="culture" onclick="selectCategory('culture')">🎭 文化</button>
                             <button type="button" class="category-option" data-category="food" onclick="selectCategory('food')">🍽️ グルメ</button>
+                            <button type="button" class="category-option" data-category="person-tai" onclick="selectCategory('person-tai')">👤 泰</button>
+                            <button type="button" class="category-option" data-category="person-mi" onclick="selectCategory('person-mi')">👤 美</button>
+                            <button type="button" class="category-option" data-category="person-ten" onclick="selectCategory('person-ten')">👤 天</button>
                         </div>
                     </div>
                     <button class="add-spot-btn" onclick="addCustomSpot()">➕ この地点を追加</button>
@@ -1293,6 +1302,21 @@
                 <h4 style="font-size: 0.9rem; color: #666; margin: 15px 0 10px 0;">🗑️ 削除した観光地（タップで復元）</h4>
                 <div class="saved-spots-list" id="hiddenSpotsList"></div>
             </div>
+
+            <div class="sidebar-section tab-content" id="tab-person-tai">
+                <h4 style="font-size: 0.9rem; color: #333; margin-bottom: 10px;">📍 泰さんの地点</h4>
+                <div class="saved-spots-list" id="personSpotsList-tai"></div>
+            </div>
+
+            <div class="sidebar-section tab-content" id="tab-person-mi">
+                <h4 style="font-size: 0.9rem; color: #333; margin-bottom: 10px;">📍 美さんの地点</h4>
+                <div class="saved-spots-list" id="personSpotsList-mi"></div>
+            </div>
+
+            <div class="sidebar-section tab-content" id="tab-person-ten">
+                <h4 style="font-size: 0.9rem; color: #333; margin-bottom: 10px;">📍 天さんの地点</h4>
+                <div class="saved-spots-list" id="personSpotsList-ten"></div>
+            </div>
         </div>
 
         <div class="map-restore-bar" id="mapRestoreBar" onclick="toggleMap()">
@@ -1303,22 +1327,6 @@
                 ➖ 地図を最小化
             </button>
             <div id="map"></div>
-        </div>
-    </div>
-
-    <div class="share-overlay" id="shareOverlay">
-        <div class="share-container">
-            <h3>🔗 マップを共有</h3>
-            <div class="share-url-box">
-                <input type="text" class="share-url-input" id="shareUrlInput" readonly>
-                <button class="copy-btn" onclick="copyShareUrl()">コピー</button>
-            </div>
-            <div class="share-buttons">
-                <a href="#" class="share-btn line" id="lineShareBtn" target="_blank">
-                    📱 LINE
-                </a>
-            </div>
-            <button class="share-btn close" onclick="closeShareModal()">閉じる</button>
         </div>
     </div>
 
@@ -1362,8 +1370,19 @@
             currentUserId = userId;
             localStorage.setItem('travelMapUserId', userId);
 
+            // ローカルにデータがあるか確認（ログイン前に追加した分）
+            const localSydney = localStorage.getItem('australiaTravelMap_sydney');
+            const localMelbourne = localStorage.getItem('australiaTravelMap_melbourne');
+            const hasLocalData = (localSydney && JSON.parse(localSydney).customSpots?.length > 0) ||
+                                 (localMelbourne && JSON.parse(localMelbourne).customSpots?.length > 0);
+
             // サーバーからデータを取得
-            await loadFromCloud();
+            const cloudHasData = await loadFromCloud();
+
+            // サーバーにデータがなく、ローカルにデータがある場合はアップロード
+            if (!cloudHasData && hasLocalData) {
+                await saveToCloud();
+            }
 
             updateSyncUI();
             closeUserModal();
@@ -1393,7 +1412,7 @@
 
         // クラウドからデータを読み込み
         async function loadFromCloud() {
-            if (!currentUserId) return;
+            if (!currentUserId) return false;
 
             const indicator = document.getElementById('syncIndicator');
             indicator.className = 'sync-indicator syncing';
@@ -1402,7 +1421,10 @@
                 const response = await fetch(`/api/sync/${currentUserId}`);
                 const result = await response.json();
 
-                if (result.success && result.data) {
+                const hasCloudData = result.success && result.data &&
+                    (result.data.sydney || result.data.melbourne);
+
+                if (hasCloudData) {
                     // シドニーのデータ
                     if (result.data.sydney) {
                         localStorage.setItem('australiaTravelMap_sydney', JSON.stringify(result.data.sydney));
@@ -1421,9 +1443,11 @@
                 }
 
                 indicator.className = 'sync-indicator';
+                return hasCloudData;
             } catch (e) {
                 console.error('Cloud load error:', e);
                 indicator.className = 'sync-indicator offline';
+                return false;
             }
         }
 
@@ -1477,12 +1501,6 @@
 
         // 手動で最新情報に更新
         async function refreshData() {
-            // 確認アラートを表示
-            const confirmed = confirm('現在の情報が上書きされます。本当に実行しますか？');
-            if (!confirmed) {
-                return;
-            }
-
             const refreshBtn = document.getElementById('refreshBtn');
             refreshBtn.disabled = true;
             refreshBtn.textContent = '⏳';
@@ -1506,19 +1524,19 @@
         const sydneySpots = [
             { id: 1, name: "オペラハウス", nameEn: "Sydney Opera House", category: "landmark", icon: "🎭", lat: -33.8568, lng: 151.2153, description: "世界遺産の象徴的建築" },
             { id: 2, name: "ハーバーブリッジ", nameEn: "Sydney Harbour Bridge", category: "landmark", icon: "🌉", lat: -33.8523, lng: 151.2108, description: "シドニーのアイコン" },
-            { id: 3, name: "ボンダイビーチ", nameEn: "Bondi Beach", category: "nature", icon: "🏖️", lat: -33.8908, lng: 151.2743, description: "有名なサーフビーチ" },
-            { id: 4, name: "ロイヤル植物園", nameEn: "Royal Botanic Garden", category: "nature", icon: "🌿", lat: -33.8642, lng: 151.2166, description: "美しい庭園" },
-            { id: 5, name: "タロンガ動物園", nameEn: "Taronga Zoo", category: "nature", icon: "🦁", lat: -33.8436, lng: 151.2411, description: "絶景の動物園" },
+            { id: 3, name: "ボンダイビーチ", nameEn: "Bondi Beach", category: "landmark", icon: "🏖️", lat: -33.8908, lng: 151.2743, description: "有名なサーフビーチ" },
+            { id: 4, name: "ロイヤル植物園", nameEn: "Royal Botanic Garden", category: "landmark", icon: "🌿", lat: -33.8642, lng: 151.2166, description: "美しい庭園" },
+            { id: 5, name: "タロンガ動物園", nameEn: "Taronga Zoo", category: "landmark", icon: "🦁", lat: -33.8436, lng: 151.2411, description: "絶景の動物園" },
             { id: 6, name: "ダーリングハーバー", nameEn: "Darling Harbour", category: "landmark", icon: "⚓", lat: -33.8724, lng: 151.1995, description: "ウォーターフロントエリア" },
-            { id: 7, name: "ザ・ロックス", nameEn: "The Rocks", category: "culture", icon: "🏛️", lat: -33.8599, lng: 151.2090, description: "歴史地区" },
+            { id: 7, name: "ザ・ロックス", nameEn: "The Rocks", category: "landmark", icon: "🏛️", lat: -33.8599, lng: 151.2090, description: "歴史地区" },
             { id: 8, name: "フィッシュマーケット", nameEn: "Sydney Fish Market", category: "food", icon: "🦞", lat: -33.8710, lng: 151.1916, description: "新鮮なシーフード" },
             { id: 9, name: "チャイナタウン", nameEn: "Chinatown", category: "food", icon: "🥡", lat: -33.8785, lng: 151.2044, description: "アジア料理の宝庫" },
-            { id: 10, name: "NSW美術館", nameEn: "Art Gallery of NSW", category: "culture", icon: "🖼️", lat: -33.8688, lng: 151.2173, description: "オーストラリアアート" },
+            { id: 10, name: "NSW美術館", nameEn: "Art Gallery of NSW", category: "landmark", icon: "🖼️", lat: -33.8688, lng: 151.2173, description: "オーストラリアアート" },
             { id: 11, name: "シドニータワー", nameEn: "Sydney Tower Eye", category: "landmark", icon: "🗼", lat: -33.8705, lng: 151.2089, description: "360度パノラマビュー" },
-            { id: 12, name: "マンリービーチ", nameEn: "Manly Beach", category: "nature", icon: "🌊", lat: -33.7969, lng: 151.2879, description: "フェリーで行くビーチ" },
-            { id: 13, name: "ルナパーク", nameEn: "Luna Park", category: "culture", icon: "🎡", lat: -33.8474, lng: 151.2093, description: "レトロな遊園地" },
+            { id: 12, name: "マンリービーチ", nameEn: "Manly Beach", category: "landmark", icon: "🌊", lat: -33.7969, lng: 151.2879, description: "フェリーで行くビーチ" },
+            { id: 13, name: "ルナパーク", nameEn: "Luna Park", category: "landmark", icon: "🎡", lat: -33.8474, lng: 151.2093, description: "レトロな遊園地" },
             { id: 14, name: "サーキュラーキー", nameEn: "Circular Quay", category: "landmark", icon: "🚢", lat: -33.8611, lng: 151.2107, description: "フェリーターミナル" },
-            { id: 15, name: "ブルーマウンテンズ", nameEn: "Blue Mountains", category: "nature", icon: "⛰️", lat: -33.7182, lng: 150.3119, description: "世界遺産の山岳地帯" }
+            { id: 15, name: "ブルーマウンテンズ", nameEn: "Blue Mountains", category: "landmark", icon: "⛰️", lat: -33.7182, lng: 150.3119, description: "世界遺産の山岳地帯" }
         ];
 
         // メルボルンの主要観光地データ
@@ -1526,18 +1544,18 @@
             { id: 101, name: "フェデレーションスクエア", nameEn: "Federation Square", category: "landmark", icon: "🏛️", lat: -37.8180, lng: 144.9691, description: "市の中心広場" },
             { id: 102, name: "フリンダースストリート駅", nameEn: "Flinders Street Station", category: "landmark", icon: "🚉", lat: -37.8183, lng: 144.9671, description: "象徴的な駅舎" },
             { id: 103, name: "クイーンビクトリアマーケット", nameEn: "Queen Victoria Market", category: "food", icon: "🛒", lat: -37.8076, lng: 144.9568, description: "南半球最大の市場" },
-            { id: 104, name: "メルボルン王立植物園", nameEn: "Royal Botanic Gardens", category: "nature", icon: "🌿", lat: -37.8304, lng: 144.9796, description: "美しい庭園" },
-            { id: 105, name: "セントキルダビーチ", nameEn: "St Kilda Beach", category: "nature", icon: "🏖️", lat: -37.8679, lng: 144.9739, description: "ペンギンも見られるビーチ" },
-            { id: 106, name: "ビクトリア州立図書館", nameEn: "State Library Victoria", category: "culture", icon: "📚", lat: -37.8098, lng: 144.9652, description: "美しいドーム型閲覧室" },
-            { id: 107, name: "メルボルン博物館", nameEn: "Melbourne Museum", category: "culture", icon: "🏛️", lat: -37.8033, lng: 144.9717, description: "南半球最大の博物館" },
-            { id: 108, name: "ホイジャーレーン", nameEn: "Hosier Lane", category: "culture", icon: "🎨", lat: -37.8165, lng: 144.9690, description: "ストリートアートの聖地" },
+            { id: 104, name: "メルボルン王立植物園", nameEn: "Royal Botanic Gardens", category: "landmark", icon: "🌿", lat: -37.8304, lng: 144.9796, description: "美しい庭園" },
+            { id: 105, name: "セントキルダビーチ", nameEn: "St Kilda Beach", category: "landmark", icon: "🏖️", lat: -37.8679, lng: 144.9739, description: "ペンギンも見られるビーチ" },
+            { id: 106, name: "ビクトリア州立図書館", nameEn: "State Library Victoria", category: "landmark", icon: "📚", lat: -37.8098, lng: 144.9652, description: "美しいドーム型閲覧室" },
+            { id: 107, name: "メルボルン博物館", nameEn: "Melbourne Museum", category: "landmark", icon: "🏛️", lat: -37.8033, lng: 144.9717, description: "南半球最大の博物館" },
+            { id: 108, name: "ホイジャーレーン", nameEn: "Hosier Lane", category: "landmark", icon: "🎨", lat: -37.8165, lng: 144.9690, description: "ストリートアートの聖地" },
             { id: 109, name: "ユーレカタワー", nameEn: "Eureka Tower", category: "landmark", icon: "🗼", lat: -37.8215, lng: 144.9646, description: "88階の展望台" },
-            { id: 110, name: "メルボルン動物園", nameEn: "Melbourne Zoo", category: "nature", icon: "🦁", lat: -37.7847, lng: 144.9516, description: "世界最古の動物園の一つ" },
-            { id: 111, name: "ブライトンビーチ", nameEn: "Brighton Beach", category: "nature", icon: "🏠", lat: -37.9178, lng: 144.9873, description: "カラフルなビーチハウス" },
-            { id: 112, name: "グレートオーシャンロード", nameEn: "Great Ocean Road", category: "nature", icon: "🌊", lat: -38.6629, lng: 143.1050, description: "12使徒岩の絶景" },
+            { id: 110, name: "メルボルン動物園", nameEn: "Melbourne Zoo", category: "landmark", icon: "🦁", lat: -37.7847, lng: 144.9516, description: "世界最古の動物園の一つ" },
+            { id: 111, name: "ブライトンビーチ", nameEn: "Brighton Beach", category: "landmark", icon: "🏠", lat: -37.9178, lng: 144.9873, description: "カラフルなビーチハウス" },
+            { id: 112, name: "グレートオーシャンロード", nameEn: "Great Ocean Road", category: "landmark", icon: "🌊", lat: -38.6629, lng: 143.1050, description: "12使徒岩の絶景" },
             { id: 113, name: "サウスメルボルンマーケット", nameEn: "South Melbourne Market", category: "food", icon: "🥐", lat: -37.8326, lng: 144.9565, description: "地元で人気のマーケット" },
             { id: 114, name: "チャイナタウン", nameEn: "Chinatown", category: "food", icon: "🥡", lat: -37.8118, lng: 144.9685, description: "アジア料理の宝庫" },
-            { id: 115, name: "メルボルンクリケットグラウンド", nameEn: "MCG", category: "culture", icon: "🏟️", lat: -37.8200, lng: 144.9834, description: "スポーツの聖地" }
+            { id: 115, name: "メルボルンクリケットグラウンド", nameEn: "MCG", category: "landmark", icon: "🏟️", lat: -37.8200, lng: 144.9834, description: "スポーツの聖地" }
         ];
 
         // 都市設定
@@ -1579,9 +1597,10 @@
         // カテゴリアイコンのマッピング
         const categoryIcons = {
             landmark: '🏛️',
-            nature: '🌿',
-            culture: '🎭',
-            food: '🍽️'
+            food: '🍽️',
+            'person-tai': '👤',
+            'person-mi': '👤',
+            'person-ten': '👤'
         };
 
         // カテゴリを選択
@@ -1599,7 +1618,18 @@
             if (savedUserId) {
                 currentUserId = savedUserId;
                 // クラウドからデータを同期
-                await loadFromCloud();
+                const cloudHasData = await loadFromCloud();
+
+                // サーバーにデータがなく、ローカルにデータがある場合はアップロード
+                if (!cloudHasData) {
+                    const localSydney = localStorage.getItem('australiaTravelMap_sydney');
+                    const localMelbourne = localStorage.getItem('australiaTravelMap_melbourne');
+                    const hasLocalData = (localSydney && JSON.parse(localSydney).customSpots?.length > 0) ||
+                                         (localMelbourne && JSON.parse(localMelbourne).customSpots?.length > 0);
+                    if (hasLocalData) {
+                        await saveToCloud();
+                    }
+                }
             }
             updateSyncUI();
 
@@ -2107,8 +2137,13 @@
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-            document.querySelector(`.tab-btn:nth-child(${tabName === 'spots' ? 1 : tabName === 'custom' ? 2 : 3})`).classList.add('active');
+            document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
             document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            // 人物タブが選択された場合、そのタブのスポットを描画
+            if (tabName.startsWith('person-')) {
+                renderPersonSpots(tabName);
+            }
 
             if (tabName !== 'custom' && markers['temp']) {
                 map.removeLayer(markers['temp']);
@@ -2134,7 +2169,7 @@
         }
 
         function getCategoryIcon(category) {
-            const icons = { landmark: '🏛️', nature: '🌿', culture: '🎭', food: '🍽️' };
+            const icons = { landmark: '🏛️', food: '🍽️', 'person-tai': '👤', 'person-mi': '👤', 'person-ten': '👤' };
             return icons[category] || '';
         }
 
@@ -2171,6 +2206,107 @@
         }
 
         // 場所を検索
+        // Google Places API Key
+        const GOOGLE_PLACES_API_KEY = 'AIzaSyBcZczI3KNAR0ypgCyvpoFaYbNsyu0--IA';
+
+        // 電話番号パターン判定
+        function isPhoneNumber(query) {
+            // 数字とハイフン、スペース、括弧、+のみで構成され、数字が6桁以上
+            const cleaned = query.replace(/[\s\-\(\)\+]/g, '');
+            return /^\d{6,}$/.test(cleaned);
+        }
+
+        // Google Places API (New) で電話番号検索
+        async function searchByPhone(query) {
+            const resultsContainer = document.getElementById('searchResults');
+
+            // 電話番号を国際形式に変換（オーストラリア）
+            // スペースは保持する（Google APIはスペース付き形式の方が精度が高い）
+            let phoneNumber = query.replace(/[\-\(\)]/g, '').trim();
+            if (phoneNumber.startsWith('0')) {
+                phoneNumber = '+61 ' + phoneNumber.substring(1);
+            } else if (!phoneNumber.startsWith('+')) {
+                phoneNumber = '+61 ' + phoneNumber;
+            }
+
+            try {
+                // Step 1: Text Searchで電話番号を検索
+                const response = await fetch(
+                    `https://places.googleapis.com/v1/places:searchText`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+                            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.nationalPhoneNumber,places.internationalPhoneNumber,places.types,places.primaryType'
+                        },
+                        body: JSON.stringify({
+                            textQuery: phoneNumber
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!data.places || data.places.length === 0) {
+                    resultsContainer.innerHTML = '<div class="no-results">電話番号に一致する場所が見つかりません。番号を確認してください。</div>';
+                    return;
+                }
+
+                // 電話番号が一致する結果を優先的にフィルタ
+                const inputDigits = phoneNumber.replace(/\D/g, '');
+                const matchedPlaces = data.places.filter(place => {
+                    const placePhone = (place.internationalPhoneNumber || place.nationalPhoneNumber || '').replace(/\D/g, '');
+                    return placePhone && placePhone === inputDigits;
+                });
+
+                // 完全一致があればそれを表示、なければ全結果を表示
+                const displayPlaces = (matchedPlaces.length > 0 ? matchedPlaces : data.places).slice(0, 5);
+
+                resultsContainer.innerHTML = displayPlaces.map((place, index) => {
+                    const name = place.displayName?.text || '不明';
+                    const address = place.formattedAddress || '';
+                    const phone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
+                    const lat = place.location?.latitude;
+                    const lng = place.location?.longitude;
+                    const icon = getGooglePlaceIcon(place.primaryType || (place.types && place.types[0]) || '');
+
+                    return `
+                        <div class="search-result-item" onclick="selectSearchResult(${index}, ${lat}, ${lng}, '${escapeHtml(name)}', '${escapeHtml(address)}')">
+                            <span class="search-result-icon">${icon}</span>
+                            <div class="search-result-info">
+                                <div class="search-result-name">${name}</div>
+                                <div class="search-result-address">${address}</div>
+                                ${phone ? `<div class="search-result-phone">📞 ${phone}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Phone search error:', error);
+                resultsContainer.innerHTML = '<div class="no-results">電話番号検索中にエラーが発生しました。</div>';
+            }
+        }
+
+        // Google Places タイプからアイコンを取得
+        function getGooglePlaceIcon(type) {
+            const icons = {
+                'restaurant': '🍽️', 'cafe': '☕', 'bar': '🍺',
+                'lodging': '🏨', 'hotel': '🏨',
+                'museum': '🏛️', 'art_gallery': '🖼️',
+                'park': '🌳', 'tourist_attraction': '⭐',
+                'store': '🛒', 'shopping_mall': '🛍️',
+                'hospital': '🏥', 'pharmacy': '💊',
+                'bank': '🏦', 'gas_station': '⛽',
+                'train_station': '🚉', 'airport': '✈️',
+                'church': '⛪', 'school': '🏫',
+                'gym': '🏋️', 'spa': '💆',
+                'beauty_salon': '💇', 'hair_care': '💇',
+            };
+            return icons[type] || '📍';
+        }
+
         async function searchLocation() {
             const query = document.getElementById('searchInput').value.trim();
             if (!query) {
@@ -2180,6 +2316,12 @@
 
             const resultsContainer = document.getElementById('searchResults');
             resultsContainer.innerHTML = '<div class="searching-indicator">🔍 検索中...</div>';
+
+            // 電話番号パターンの場合はGoogle Places APIで検索
+            if (isPhoneNumber(query)) {
+                await searchByPhone(query);
+                return;
+            }
 
             // 現在の都市に基づいて検索範囲を設定
             const config = cityConfig[currentCity];
@@ -2471,7 +2613,34 @@
                     <div class="saved-spot-actions">
                         <button class="spot-action-btn start" onclick="setAsStart(${spot.id})" title="出発地に設定">S</button>
                         <button class="spot-action-btn end" onclick="setAsEnd(${spot.id})" title="目的地に設定">E</button>
-                        <button class="delete-saved-btn" onclick="deleteSpot(${spot.id})">削除</button>
+                        <button class="delete-saved-btn" onclick="deleteSpot(${spot.id}, true)">削除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 人物タブのスポット描画
+        function renderPersonSpots(personTab) {
+            const personKey = personTab.replace('person-', '');
+            const container = document.getElementById(`personSpotsList-${personKey}`);
+            if (!container) return;
+
+            const personSpots = customSpots.filter(s => s.category === personTab);
+            if (personSpots.length === 0) {
+                container.innerHTML = '<p class="empty-message">地点はまだありません。「カスタム追加」タブから追加してください。</p>';
+                return;
+            }
+
+            container.innerHTML = personSpots.map(spot => `
+                <div class="saved-spot-item">
+                    <div class="saved-spot-info">
+                        <span>${spot.icon}</span>
+                        <span>${spot.name}</span>
+                    </div>
+                    <div class="saved-spot-actions">
+                        <button class="spot-action-btn start" onclick="setAsStart(${spot.id})" title="出発地に設定">S</button>
+                        <button class="spot-action-btn end" onclick="setAsEnd(${spot.id})" title="目的地に設定">E</button>
+                        <button class="delete-saved-btn" onclick="deleteSpot(${spot.id}, true)">削除</button>
                     </div>
                 </div>
             `).join('');
